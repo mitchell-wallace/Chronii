@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/counter_view.dart';
 import '../widgets/todo_list_view.dart';
+import 'timer_screen.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -17,7 +18,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recreate the tab controller to ensure its length matches the number of tabs
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -58,6 +66,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               text: 'Todo List',
               iconMargin: EdgeInsets.only(bottom: 4),
             ),
+            Tab(
+              icon: Icon(Icons.timer),
+              text: 'Timers',
+              iconMargin: EdgeInsets.only(bottom: 4),
+            ),
           ],
         ),
       ),
@@ -79,6 +92,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             CounterView(),
             // Todo List Tab
             TodoListView(),
+            // Timer Tab
+            TimerScreen(),
           ],
         ),
       ),
