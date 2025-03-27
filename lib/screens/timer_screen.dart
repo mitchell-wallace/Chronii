@@ -113,11 +113,15 @@ class _TimerScreenState extends State<TimerScreen> {
 
   // Build the list of timers
   Widget _buildTimersList(List<TaskTimer> timers) {
+    // Sort timers by start time, most recent first
+    final sortedTimers = List<TaskTimer>.from(timers);
+    sortedTimers.sort((a, b) => b.startTime.compareTo(a.startTime));
+    
     return ListView.builder(
-      itemCount: timers.length,
+      itemCount: sortedTimers.length,
       padding: EdgeInsets.zero, // No padding to match TodoListView
       itemBuilder: (context, index) {
-        final timer = timers[index];
+        final timer = sortedTimers[index];
         return TimerCard(
           key: ValueKey(timer.id),
           timer: timer,
