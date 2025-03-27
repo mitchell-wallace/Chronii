@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../utils/time_formatter.dart';
-import 'timer_menu_actions.dart';
 
 /// Widget for displaying summary of selected timers
 class TimerSummary extends StatelessWidget {
@@ -13,12 +12,16 @@ class TimerSummary extends StatelessWidget {
   /// Callback to deselect all timers
   final VoidCallback onDeselectAll;
   
+  /// Callback to delete all selected timers
+  final VoidCallback onDeleteAll;
+  
   /// Constructor
   const TimerSummary({
     super.key,
     required this.selectedCount,
     required this.totalDuration,
     required this.onDeselectAll,
+    required this.onDeleteAll,
   });
 
   @override
@@ -62,13 +65,35 @@ class TimerSummary extends StatelessWidget {
             ],
           ),
           
-          // Deselect All button
+          // Action buttons
           if (selectedCount > 0)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TimerDeselectAllButton(
-                selectedCount: selectedCount,
-                onDeselectAll: onDeselectAll,
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  // Deselect All button
+                  TextButton.icon(
+                    onPressed: onDeselectAll,
+                    icon: const Icon(Icons.clear_all, size: 20),
+                    label: const Text('Deselect All'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Delete All button
+                  TextButton.icon(
+                    onPressed: onDeleteAll,
+                    icon: const Icon(Icons.delete_forever, size: 20, color: Colors.red),
+                    label: const Text('Delete All', style: TextStyle(color: Colors.red)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

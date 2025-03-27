@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/todo_model.dart';
 import '../services/todo_service.dart';
+import '../widgets/base/base_empty_state.dart';
 import '../widgets/base/base_input_form.dart';
 import '../widgets/base/base_item_card.dart';
 
@@ -37,16 +38,7 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
     
     await _todoService.init();
     
-    // Add default tasks only if we don't have any todos yet
-    if (_todoService.totalCount == 0) {
-      await _todoService.addTodo('Learn Flutter basics');
-      await _todoService.addTodo('Build a simple todo app');
-      await _todoService.addTodo('Deploy to mobile and web');
-      
-      // Mark the first task as completed
-      final firstTodo = _todoService.todos.first;
-      await _todoService.toggleTodoCompletion(firstTodo.id);
-    }
+    // Removed default tasks - users will add their own tasks
     
     setState(() {
       _isLoading = false;
@@ -97,6 +89,7 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
           BaseInputForm(
             hintText: 'Add a new task',
             buttonText: 'Add',
+            buttonIcon: Icons.add,
             autoFocus: false,
             showBorder: false,
             onSubmit: _addTodo,
@@ -109,7 +102,11 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : todos.isEmpty
-                    ? _buildEmptyState(theme)
+                    ? const BaseEmptyState(
+                        icon: Icons.check_circle_outline,
+                        message: 'No tasks yet',
+                        subMessage: 'Add one to get started',
+                      )
                     : ListView.builder(
                         itemCount: todos.length,
                         itemBuilder: (context, index) {
@@ -141,29 +138,6 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
                           );
                         },
                       ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 64,
-            color: theme.colorScheme.primary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No tasks yet! Add one.',
-            style: TextStyle(
-              fontSize: 18,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
-            ),
           ),
         ],
       ),
