@@ -92,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             CounterView(),
             // Todo List Tab
             TodoListView(),
-            // Timer Tab
+            // Timer Tab - Now it will inherit the gradient background
             TimerScreen(),
           ],
         ),
