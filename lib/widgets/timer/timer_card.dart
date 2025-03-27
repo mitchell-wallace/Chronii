@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/timer_model.dart';
 import '../../utils/time_formatter.dart';
 import '../base/base_item_card.dart';
+import 'timer_menu_actions.dart';
 
 /// A card widget representing a single task timer
 class TimerCard extends StatelessWidget {
@@ -23,6 +24,9 @@ class TimerCard extends StatelessWidget {
   /// Callback when the timer is deleted
   final VoidCallback onDelete;
 
+  /// Callback when the timer is updated
+  final Function(TaskTimer) onUpdate;
+
   /// Constructor
   const TimerCard({
     super.key,
@@ -32,6 +36,7 @@ class TimerCard extends StatelessWidget {
     required this.onToggle,
     required this.onSelect,
     required this.onDelete,
+    required this.onUpdate,
   });
 
   @override
@@ -57,6 +62,13 @@ class TimerCard extends StatelessWidget {
       ),
       onPressed: onToggle,
     );
+
+    // Create menu button
+    final menuButton = TimerMenuButton(
+      timer: timer,
+      onUpdate: onUpdate,
+      onDelete: onDelete,
+    );
     
     // Selection indicator
     final selectionIndicator = Icon(
@@ -75,7 +87,7 @@ class TimerCard extends StatelessWidget {
       onTap: onSelect,
       onDelete: onDelete,
       leading: selectionIndicator,
-      actions: [actionButton],
+      actions: [actionButton, menuButton],
       additionalContent: durationWidget,
     );
   }

@@ -56,6 +56,16 @@ class TimerService {
     return timer;
   }
   
+  /// Update an existing timer
+  Future<bool> updateTimer(TaskTimer updatedTimer) async {
+    final index = _timers.indexWhere((timer) => timer.id == updatedTimer.id);
+    if (index == -1) return false;
+    
+    _timers[index] = updatedTimer;
+    await _saveTimers();
+    return true;
+  }
+  
   /// Toggle a timer's running state
   /// If timer is running, it will be stopped
   /// If timer is stopped, a new timer with the same name will be created

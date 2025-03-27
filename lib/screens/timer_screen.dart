@@ -90,12 +90,74 @@ class _TimerScreenState extends State<TimerScreen> {
     });
   }
 
+  // Deselect all timers
+  void _deselectAllTimers() {
+    setState(() {
+      _selectedTimerIds.clear();
+    });
+  }
+
   // Delete timer
   Future<void> _deleteTimer(String timerId) async {
     await _timerService.deleteTimer(timerId);
     setState(() {
       _selectedTimerIds.remove(timerId);
     });
+  }
+
+  // Update timer
+  Future<void> _updateTimer(TaskTimer updatedTimer) async {
+    await _timerService.updateTimer(updatedTimer);
+    setState(() {}); // Refresh UI
+  }
+
+  // Build the list of timers
+  Widget _buildTimersList(List<TaskTimer> timers) {
+    return ListView.builder(
+      itemCount: timers.length,
+      padding: EdgeInsets.zero, // No padding to match TodoListView
+      itemBuilder: (context, index) {
+        final timer = timers[index];
+        return TimerCard(
+          key: ValueKey(timer.id),
+          timer: timer,
+          isSelected: _selectedTimerIds.contains(timer.id),
+          currentTime: _currentTime,
+          onToggle: () => _toggleTimer(timer.id),
+          onSelect: () => _toggleTimerSelection(timer.id),
+          onDelete: () => _deleteTimer(timer.id),
+          onUpdate: _updateTimer,
+        );
+      },
+    );
+  }
+
+  // Build empty state widget
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.timelapse,
+            size: 64,
+            color: theme.colorScheme.outline,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No timers yet',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create a timer to get started',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -127,53 +189,10 @@ class _TimerScreenState extends State<TimerScreen> {
             TimerSummary(
               selectedCount: _selectedTimerIds.length,
               totalDuration: totalDuration,
+              onDeselectAll: _deselectAllTimers,
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.timer_outlined,
-            size: 64,
-            color: theme.colorScheme.primary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No timers yet! Add one.',
-            style: TextStyle(
-              fontSize: 18,
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimersList(List<TaskTimer> timers) {
-    return ListView.builder(
-      itemCount: timers.length,
-      padding: EdgeInsets.zero, // Remove padding to match TodoListView
-      itemBuilder: (context, index) {
-        // Show newest timers first
-        final timer = timers[timers.length - 1 - index];
-        
-        return TimerCard(
-          timer: timer,
-          isSelected: _selectedTimerIds.contains(timer.id),
-          currentTime: _currentTime,
-          onToggle: () => _toggleTimer(timer.id),
-          onSelect: () => _toggleTimerSelection(timer.id),
-          onDelete: () => _deleteTimer(timer.id),
-        );
-      },
     );
   }
 } 
