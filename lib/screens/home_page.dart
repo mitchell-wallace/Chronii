@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/counter_view.dart';
 import '../widgets/todo_list_view.dart';
+import '../widgets/window_controls.dart';
 import 'timer_screen.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -49,6 +50,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           ),
         ),
         elevation: 0,
+        actions: const [
+          // Add window controls in the app bar
+          WindowControls(),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: colorScheme.primary,
