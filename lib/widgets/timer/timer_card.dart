@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/timer_model.dart';
 import '../../utils/time_formatter.dart';
+import '../base/base_item_card.dart';
 
 /// A card widget representing a single task timer
 class TimerCard extends StatelessWidget {
@@ -38,79 +39,44 @@ class TimerCard extends StatelessWidget {
     final theme = Theme.of(context);
     final duration = timer.getDuration(currentTime);
     
-    return Dismissible(
-      key: Key(timer.id),
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16.0),
-        child: const Icon(
-          Icons.delete,
-          color: Colors.white,
-        ),
+    // Create a duration display widget
+    final durationWidget = Text(
+      TimeFormatter.formatDuration(duration),
+      style: theme.textTheme.titleLarge?.copyWith(
+        fontFamily: 'monospace',
+        fontWeight: FontWeight.bold,
       ),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete(),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        color: isSelected 
-            ? theme.colorScheme.primaryContainer.withOpacity(0.3) 
-            : null,
-        child: InkWell(
-          onTap: onSelect,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                // Selection indicator
-                Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? theme.colorScheme.primary : theme.disabledColor,
-                ),
-                
-                const SizedBox(width: 16),
-                
-                // Timer info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        timer.name,
-                        style: theme.textTheme.titleMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatTimePeriod(timer, currentTime),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        TimeFormatter.formatDuration(duration),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Start/stop button
-                IconButton(
-                  icon: Icon(
-                    timer.isRunning ? Icons.stop_circle : Icons.play_circle,
-                    color: timer.isRunning ? Colors.red : Colors.green,
-                    size: 40,
-                  ),
-                  onPressed: onToggle,
-                ),
-              ],
-            ),
-          ),
-        ),
+    );
+    
+    // Create start/stop action button
+    final actionButton = IconButton(
+      icon: Icon(
+        timer.isRunning ? Icons.stop_circle : Icons.play_circle,
+        color: timer.isRunning ? Colors.red : Colors.green,
+        size: 40,
       ),
+      onPressed: onToggle,
+    );
+    
+    // Selection indicator
+    final selectionIndicator = Icon(
+      isSelected ? Icons.check_circle : Icons.circle_outlined,
+      color: isSelected ? theme.colorScheme.primary : theme.disabledColor,
+    );
+    
+    // Use our base item card component
+    return BaseItemCard(
+      itemKey: Key(timer.id),
+      title: timer.name,
+      subtitle: _formatTimePeriod(timer, currentTime),
+      isSelected: isSelected,
+      isCompleted: !timer.isRunning, // A non-running timer is considered "completed"
+      completedDecoration: null, // Don't use strikethrough for timers
+      onTap: onSelect,
+      onDelete: onDelete,
+      leading: selectionIndicator,
+      actions: [actionButton],
+      additionalContent: durationWidget,
     );
   }
 

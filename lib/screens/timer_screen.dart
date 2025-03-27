@@ -26,6 +26,9 @@ class _TimerScreenState extends State<TimerScreen> {
   
   // Current time for duration calculations
   DateTime _currentTime = DateTime.now();
+  
+  // Loading state
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -45,8 +48,15 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Future<void> _initializeTimerService() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     await _timerService.init();
-    setState(() {}); // Refresh UI after loading timers
+    
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -90,51 +100,56 @@ class _TimerScreenState extends State<TimerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final timers = _timerService.timers;
     final totalDuration = _timerService.calculateTotalDuration(_selectedTimerIds.toList());
     
-    return Column(
-      children: [
-        // New timer form
-        TimerForm(onCreateTimer: _createTimer),
-        
-        // Timer list
-        Expanded(
-          child: timers.isEmpty
-              ? _buildEmptyState(context)
-              : _buildTimersList(timers),
-        ),
-        
-        // Selected timers summary
-        if (_selectedTimerIds.isNotEmpty)
-          TimerSummary(
-            selectedCount: _selectedTimerIds.length,
-            totalDuration: totalDuration,
+    return Padding(
+      padding: const EdgeInsets.all(16.0), // Match padding with TodoListView
+      child: Column(
+        children: [
+          // New timer form
+          TimerForm(onCreateTimer: _createTimer),
+          
+          const SizedBox(height: 16), // Consistent spacing
+          
+          // Timer list
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : timers.isEmpty
+                    ? _buildEmptyState(theme)
+                    : _buildTimersList(timers),
           ),
-      ],
+          
+          // Selected timers summary
+          if (_selectedTimerIds.isNotEmpty)
+            TimerSummary(
+              selectedCount: _selectedTimerIds.length,
+              totalDuration: totalDuration,
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.timer_outlined,
-            size: 70,
-            color: Theme.of(context).disabledColor,
+            size: 64,
+            color: theme.colorScheme.primary.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            'No timers yet',
-            style: Theme.of(context).textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create one to start tracking time!',
-            style: Theme.of(context).textTheme.bodyLarge,
+            'No timers yet! Add one.',
+            style: TextStyle(
+              fontSize: 18,
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -145,6 +160,7 @@ class _TimerScreenState extends State<TimerScreen> {
   Widget _buildTimersList(List<TaskTimer> timers) {
     return ListView.builder(
       itemCount: timers.length,
+      padding: EdgeInsets.zero, // Remove padding to match TodoListView
       itemBuilder: (context, index) {
         // Show newest timers first
         final timer = timers[timers.length - 1 - index];
