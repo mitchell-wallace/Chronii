@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/todo.dart';
+import '../models/todo_model.dart';
+import '../services/todo_service.dart';
 
 class TodoListView extends StatefulWidget {
   const TodoListView({super.key});
@@ -9,9 +10,11 @@ class TodoListView extends StatefulWidget {
 }
 
 class _TodoListViewState extends State<TodoListView> with SingleTickerProviderStateMixin {
-  final List<Todo> _todos = [];
+  // Use our new Todo service for persistence
+  final TodoService _todoService = TodoService();
   final TextEditingController _textController = TextEditingController();
   late AnimationController _animationController;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -22,24 +25,31 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
       duration: const Duration(milliseconds: 300),
     );
     
-    // Add default tasks
-    _todos.addAll([
-      Todo(
-        id: '1',
-        title: 'Learn Flutter basics',
-        isCompleted: true,
-      ),
-      Todo(
-        id: '2',
-        title: 'Build a simple todo app',
-        isCompleted: false,
-      ),
-      Todo(
-        id: '3',
-        title: 'Deploy to mobile and web',
-        isCompleted: false,
-      ),
-    ]);
+    // Initialize the todo service and load saved todos
+    _initTodoService();
+  }
+
+  Future<void> _initTodoService() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    await _todoService.init();
+    
+    // Add default tasks only if we don't have any todos yet
+    if (_todoService.totalCount == 0) {
+      await _todoService.addTodo('Learn Flutter basics');
+      await _todoService.addTodo('Build a simple todo app');
+      await _todoService.addTodo('Deploy to mobile and web');
+      
+      // Mark the first task as completed
+      final firstTodo = _todoService.todos.first;
+      await _todoService.toggleTodoCompletion(firstTodo.id);
+    }
+    
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -49,55 +59,41 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
     super.dispose();
   }
 
-  void _addTodo(String title) {
+  Future<void> _addTodo(String title) async {
     if (title.trim().isEmpty) return;
     
-    setState(() {
-      _todos.add(Todo(
-        id: DateTime.now().toString(),
-        title: title,
-      ));
-      _textController.clear();
-    });
+    // Add using the service
+    await _todoService.addTodo(title);
+    _textController.clear();
+    
+    setState(() {}); // Refresh UI
     
     // Animate and scroll to the bottom
     _animationController.reset();
     _animationController.forward();
   }
 
-  void _toggleTodo(String id) {
-    setState(() {
-      final todoIndex = _todos.indexWhere((todo) => todo.id == id);
-      if (todoIndex != -1) {
-        _todos[todoIndex].isCompleted = !_todos[todoIndex].isCompleted;
-      }
-    });
+  Future<void> _toggleTodo(String id) async {
+    // Toggle using the service
+    await _todoService.toggleTodoCompletion(id);
+    setState(() {}); // Refresh UI
   }
 
-  void _deleteTodo(String id) {
-    setState(() {
-      _todos.removeWhere((todo) => todo.id == id);
-    });
+  Future<void> _deleteTodo(String id) async {
+    // Delete using the service
+    await _todoService.deleteTodo(id);
+    setState(() {}); // Refresh UI
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final todos = _todoService.todos;
     
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Header
-          Text(
-            'My Tasks',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
           
           // Add Todo Input Field
           Card(
@@ -140,104 +136,106 @@ class _TodoListViewState extends State<TodoListView> with SingleTickerProviderSt
           
           // Todo List
           Expanded(
-            child: _todos.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 64,
-                          color: theme.colorScheme.primary.withOpacity(0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No tasks yet! Add one.',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _todos.length,
-                    itemBuilder: (context, index) {
-                      final todo = _todos[index];
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          color: todo.isCompleted 
-                              ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : todos.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 64,
+                              color: theme.colorScheme.primary.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No tasks yet! Add one.',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              ),
                             ),
                           ],
                         ),
-                        child: Dismissible(
-                          key: Key(todo.id),
-                          background: Container(
+                      )
+                    : ListView.builder(
+                        itemCount: todos.length,
+                        itemBuilder: (context, index) {
+                          final todo = todos[index];
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: todo.isCompleted 
+                                  ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 16.0),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          direction: DismissDirection.endToStart,
-                          onDismissed: (_) => _deleteTodo(todo.id),
-                          child: ListTile(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            leading: Checkbox(
-                              value: todo.isCompleted,
-                              onChanged: (_) => _toggleTodo(todo.id),
-                              activeColor: theme.colorScheme.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
+                            child: Dismissible(
+                              key: Key(todo.id),
+                              background: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 16.0),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              direction: DismissDirection.endToStart,
+                              onDismissed: (_) => _deleteTodo(todo.id),
+                              child: ListTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                leading: Checkbox(
+                                  value: todo.isCompleted,
+                                  onChanged: (_) => _toggleTodo(todo.id),
+                                  activeColor: theme.colorScheme.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                title: Text(
+                                  todo.title,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: todo.isCompleted 
+                                        ? FontWeight.normal 
+                                        : FontWeight.w500,
+                                    decoration: todo.isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: todo.isCompleted
+                                        ? theme.colorScheme.onSurface.withOpacity(0.6)
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteTodo(todo.id),
+                                  tooltip: 'Delete Task',
+                                ),
                               ),
                             ),
-                            title: Text(
-                              todo.title,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: todo.isCompleted 
-                                    ? FontWeight.normal 
-                                    : FontWeight.w500,
-                                decoration: todo.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: todo.isCompleted
-                                    ? theme.colorScheme.onSurface.withOpacity(0.6)
-                                    : theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteTodo(todo.id),
-                              tooltip: 'Delete Task',
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
