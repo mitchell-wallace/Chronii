@@ -1,8 +1,15 @@
 # Do not detect
 *.cc -linguist-detectable
+*.c -linguist-detectable
+*.rc -linguist-detectable
+*.h -linguist-detectable
 *.cmake -linguist-detectable
+CMakeLists.txt -linguist-detectable
 *.cpp -linguist-detectable
 *.swift -linguist-detectable
+*.kts -linguist-detectable
+*.kt -linguist-detectable
+*.java -linguist-detectable
 
 # Detect
 *.dart linguist-detectable
