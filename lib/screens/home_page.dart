@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import '../widgets/counter_view.dart';
 import '../widgets/todo_list_view.dart';
-import '../widgets/window_controls.dart';
+import '../widgets/custom_title_bar.dart';
 import 'timer_screen.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -42,21 +42,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     final colorScheme = Theme.of(context).colorScheme;
     
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomTitleBar(
+        title: widget.title,
         backgroundColor: colorScheme.primaryContainer,
-        title: Text(
-          widget.title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colorScheme.onPrimaryContainer,
-          ),
-        ),
-        elevation: 0,
-        actions: [
-          // Add window controls only on desktop platforms
-          if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux))
-            const WindowControls(),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: colorScheme.primary,

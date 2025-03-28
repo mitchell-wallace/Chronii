@@ -24,6 +24,15 @@ class WindowHelper with WindowListener {
     
     // Set prevent close to true so we can handle window closing
     await windowManager.setPreventClose(true);
+    
+    // Enable window dragging from anywhere if using a custom title bar
+    // This is helpful as a fallback in case our GestureDetector fails
+    try {
+      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    } catch (e) {
+      debugPrint('Error setting title bar style: $e');
+    }
+    
     windowManager.addListener(this);
   }
   
