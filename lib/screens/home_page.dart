@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 import '../widgets/counter_view.dart';
 import '../widgets/todo_list_view.dart';
 import '../widgets/window_controls.dart';
@@ -50,9 +52,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           ),
         ),
         elevation: 0,
-        actions: const [
-          // Add window controls in the app bar
-          WindowControls(),
+        actions: [
+          // Add window controls only on desktop platforms
+          if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux))
+            const WindowControls(),
         ],
         bottom: TabBar(
           controller: _tabController,

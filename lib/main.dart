@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
 import 'screens/home_page.dart';
 import 'utils/window_helper.dart';
@@ -6,28 +8,31 @@ import 'utils/window_helper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize window_manager using the helper
-  await windowManager.ensureInitialized();
+  // Only initialize window_manager on desktop platforms
+  if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    // Initialize window_manager using the helper
+    await windowManager.ensureInitialized();
 
-  // Configure window options
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(480, 720),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.normal,
-    title: 'Task Manager',
-  );
+    // Configure window options
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(480, 720),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+      title: 'Task Manager',
+    );
 
-  // Apply window options and show window
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+    // Apply window options and show window
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
 
-  // Initialize the window helper
-  final windowHelper = WindowHelper();
-  await windowHelper.initWindowManager();
+    // Initialize the window helper
+    final windowHelper = WindowHelper();
+    await windowHelper.initWindowManager();
+  }
 
   runApp(const MyApp());
 }

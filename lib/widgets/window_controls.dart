@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
 
 class WindowControls extends StatefulWidget {
@@ -11,21 +13,30 @@ class WindowControls extends StatefulWidget {
 class _WindowControlsState extends State<WindowControls> with WindowListener {
   bool _isFullScreen = false;
   bool _isMaximized = false;
+  
+  // Check if running on desktop
+  bool get isDesktop => !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    _init();
+    if (isDesktop) {
+      windowManager.addListener(this);
+      _init();
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (isDesktop) {
+      windowManager.removeListener(this);
+    }
     super.dispose();
   }
 
   void _init() async {
+    if (!isDesktop) return;
+    
     _isFullScreen = await windowManager.isFullScreen();
     _isMaximized = await windowManager.isMaximized();
     setState(() {});
@@ -61,6 +72,9 @@ class _WindowControlsState extends State<WindowControls> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    // Don't render anything if not on desktop
+    if (!isDesktop) return const SizedBox.shrink();
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

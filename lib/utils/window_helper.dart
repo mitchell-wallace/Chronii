@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
 
 class WindowHelper with WindowListener {
@@ -11,8 +13,13 @@ class WindowHelper with WindowListener {
   
   WindowHelper._internal();
   
+  // Check if running on desktop
+  bool get isDesktop => !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+  
   // Initialize the window manager
   Future<void> initWindowManager() async {
+    if (!isDesktop) return;
+    
     await windowManager.ensureInitialized();
     
     // Set prevent close to true so we can handle window closing
@@ -22,12 +29,16 @@ class WindowHelper with WindowListener {
   
   // Dispose resources
   void dispose() {
+    if (!isDesktop) return;
+    
     windowManager.removeListener(this);
   }
   
   // Override window close handler to show confirmation dialog
   @override
   void onWindowClose() async {
+    if (!isDesktop) return;
+    
     bool isPreventClose = await windowManager.isPreventClose();
     if (isPreventClose) {
       // Get the current context - you need to pass this from your app
@@ -70,7 +81,9 @@ class WindowHelper with WindowListener {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop(); // Close the dialog
-                await windowManager.destroy(); // Close the window
+                if (isDesktop) {
+                  await windowManager.destroy(); // Close the window
+                }
               },
               child: const Text('Exit'),
             ),
