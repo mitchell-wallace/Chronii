@@ -37,6 +37,14 @@ dependencies:
   shared_preferences: ^2.2.2
   intl: ^0.20.2
   window_manager: ^0.4.3
+  
+  # Firebase dependencies
+  firebase_core: ^2.27.1
+  firebase_auth: ^4.17.9
+  cloud_firestore: ^4.15.9
+  
+  # State management
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:
