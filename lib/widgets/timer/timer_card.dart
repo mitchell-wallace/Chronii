@@ -82,7 +82,7 @@ class TimerCard extends StatelessWidget {
       title: timer.name,
       subtitle: _formatTimePeriod(timer, currentTime),
       isSelected: isSelected,
-      isCompleted: !timer.isRunning, // A non-running timer is considered "completed"
+      isCompleted: false,
       completedDecoration: null, // Don't use strikethrough for timers
       onTap: onSelect,
       onDelete: onDelete,
