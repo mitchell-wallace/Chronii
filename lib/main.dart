@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
-import 'screens/home_page.dart';
+import 'layouts/main_layout.dart';
+import 'screens/counter_screen.dart';
+import 'screens/todo_screen.dart';
+import 'screens/timer_screen.dart';
+import 'screens/login_screen.dart';
 import 'utils/window_helper.dart';
 
 void main() async {
@@ -37,8 +41,23 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // Flag to determine if the user is logged in
+  bool _isLoggedIn = false;
+
+  // Handle login completion
+  void _handleLoginComplete() {
+    setState(() {
+      _isLoggedIn = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,29 +69,52 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.indigo,
           brightness: Brightness.light,
-          secondary: Colors.indigo.shade300,
         ),
-        fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
-      home: const MyHomePage(title: 'Chronii'),
+      home: _isLoggedIn ? const MyHomePage(title: 'Chronii') : LoginScreen(onLoginComplete: _handleLoginComplete),
     );
   }
-} 
+}
+
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return MainLayout(
+      title: title,
+      tabs: [
+        TabItem(
+          tab: const Tab(
+            icon: Icon(Icons.add_circle_outline),
+            text: 'Counter',
+            iconMargin: EdgeInsets.only(bottom: 4),
+          ),
+          content: const CounterScreen(),
+        ),
+        TabItem(
+          tab: const Tab(
+            icon: Icon(Icons.checklist_rounded),
+            text: 'Todo List',
+            iconMargin: EdgeInsets.only(bottom: 4),
+          ),
+          content: const TodoScreen(),
+        ),
+        TabItem(
+          tab: const Tab(
+            icon: Icon(Icons.timer),
+            text: 'Timers',
+            iconMargin: EdgeInsets.only(bottom: 4),
+          ),
+          content: const TimerScreen(),
+        ),
+      ],
+    );
+  }
+}
