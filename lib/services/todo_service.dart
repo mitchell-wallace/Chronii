@@ -19,6 +19,44 @@ class TodoService extends ChangeNotifier {
   /// Get incomplete todos
   List<Todo> get incompleteTodos => _cachedTodos.where((todo) => !todo.isCompleted).toList();
   
+  /// Get todos due today
+  List<Todo> get todayTodos {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _cachedTodos.where((todo) => 
+      todo.dueDate != null && 
+      DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day) == today
+    ).toList();
+  }
+  
+  /// Get todos due this week (not including today)
+  List<Todo> get thisWeekTodos {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekFromNow = today.add(const Duration(days: 7));
+    
+    return _cachedTodos.where((todo) {
+      if (todo.dueDate == null) return false;
+      final dueDate = DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day);
+      return dueDate.isAfter(today) && dueDate.isBefore(weekFromNow) || dueDate == weekFromNow;
+    }).toList();
+  }
+  
+  /// Get overdue todos
+  List<Todo> get overdueTodos {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    return _cachedTodos.where((todo) {
+      if (todo.dueDate == null || todo.isCompleted) return false;
+      final dueDate = DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day);
+      return dueDate.isBefore(today);
+    }).toList();
+  }
+  
+  /// Get todos with no due date
+  List<Todo> get noDueDateTodos => _cachedTodos.where((todo) => todo.dueDate == null).toList();
+  
   /// Constructor
   TodoService({
     RepositoryFactory? repositoryFactory,
@@ -51,10 +89,18 @@ class TodoService extends ChangeNotifier {
   }
   
   /// Add a new todo
-  Future<Todo> addTodo(String title, {String? description}) async {
+  Future<Todo> addTodo(String title, {
+    String? description,
+    DateTime? dueDate,
+    TodoPriority priority = TodoPriority.medium,
+    List<String>? tags,
+  }) async {
     final todo = Todo(
       title: title.trim(),
       description: description?.trim(),
+      dueDate: dueDate,
+      priority: priority,
+      tags: tags,
     );
     
     await _repository.add(todo);
@@ -78,6 +124,48 @@ class TodoService extends ChangeNotifier {
       await _loadTodos(); // Refresh the cache
     }
     return success;
+  }
+  
+  /// Update todo due date
+  Future<bool> updateTodoDueDate(String todoId, DateTime? dueDate) async {
+    final todo = getTodoById(todoId);
+    if (todo == null) return false;
+    
+    final updatedTodo = todo.copyWith(dueDate: dueDate);
+    return updateTodo(updatedTodo);
+  }
+  
+  /// Update todo priority
+  Future<bool> updateTodoPriority(String todoId, TodoPriority priority) async {
+    final todo = getTodoById(todoId);
+    if (todo == null) return false;
+    
+    final updatedTodo = todo.copyWith(priority: priority);
+    return updateTodo(updatedTodo);
+  }
+  
+  /// Add tag to todo
+  Future<bool> addTagToTodo(String todoId, String tag) async {
+    final todo = getTodoById(todoId);
+    if (todo == null || tag.trim().isEmpty) return false;
+    
+    if (todo.tags.contains(tag.trim())) return true; // Already has this tag
+    
+    final updatedTags = List<String>.from(todo.tags)..add(tag.trim());
+    final updatedTodo = todo.copyWith(tags: updatedTags);
+    return updateTodo(updatedTodo);
+  }
+  
+  /// Remove tag from todo
+  Future<bool> removeTagFromTodo(String todoId, String tag) async {
+    final todo = getTodoById(todoId);
+    if (todo == null) return false;
+    
+    if (!todo.tags.contains(tag)) return true; // Doesn't have this tag
+    
+    final updatedTags = List<String>.from(todo.tags)..remove(tag);
+    final updatedTodo = todo.copyWith(tags: updatedTags);
+    return updateTodo(updatedTodo);
   }
   
   /// Toggle a todo's completion status
@@ -144,12 +232,45 @@ class TodoService extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Sort todos by due date
+  void sortByDueDate({bool ascending = true}) {
+    _cachedTodos.sort((a, b) {
+      if (a.dueDate == null && b.dueDate == null) return 0;
+      if (a.dueDate == null) return ascending ? 1 : -1;
+      if (b.dueDate == null) return ascending ? -1 : 1;
+      return ascending
+          ? a.dueDate!.compareTo(b.dueDate!)
+          : b.dueDate!.compareTo(a.dueDate!);
+    });
+    notifyListeners();
+  }
+  
+  /// Sort todos by priority
+  void sortByPriority({bool highPriorityFirst = true}) {
+    _cachedTodos.sort((a, b) {
+      return highPriorityFirst
+          ? b.priority.index.compareTo(a.priority.index)
+          : a.priority.index.compareTo(b.priority.index);
+    });
+    notifyListeners();
+  }
+  
   /// Sort todos by completion status
   void sortByCompletionStatus({bool completedFirst = false}) {
     _cachedTodos.sort((a, b) => completedFirst
         ? (a.isCompleted ? -1 : 1).compareTo(b.isCompleted ? -1 : 1)
         : (a.isCompleted ? 1 : -1).compareTo(b.isCompleted ? 1 : -1));
     notifyListeners();
+  }
+  
+  /// Filter todos by tag
+  List<Todo> filterByTag(String tag) {
+    return _cachedTodos.where((todo) => todo.tags.contains(tag)).toList();
+  }
+  
+  /// Filter todos by priority
+  List<Todo> filterByPriority(TodoPriority priority) {
+    return _cachedTodos.where((todo) => todo.priority == priority).toList();
   }
   
   /// Get the number of completed todos
@@ -160,4 +281,16 @@ class TodoService extends ChangeNotifier {
   
   /// Get the total number of todos
   int get totalCount => _cachedTodos.length;
+  
+  /// Get the number of overdue todos
+  int get overdueCount => overdueTodos.length;
+  
+  /// Get all unique tags used across todos
+  Set<String> get allTags {
+    final tags = <String>{};
+    for (final todo in _cachedTodos) {
+      tags.addAll(todo.tags);
+    }
+    return tags;
+  }
 }

@@ -46,6 +46,11 @@ class TimerService extends ChangeNotifier {
   
   /// Add a new timer
   Future<TaskTimer> addTimer(String name) async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     final timer = TaskTimer(
       name: name.trim(),
       startTime: DateTime.now(),
@@ -58,6 +63,11 @@ class TimerService extends ChangeNotifier {
   
   /// Update an existing timer
   Future<bool> updateTimer(TaskTimer updatedTimer) async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     final success = await _repository.update(updatedTimer);
     if (success) {
       await _loadTimers(); // Refresh the cache
@@ -69,6 +79,11 @@ class TimerService extends ChangeNotifier {
   /// If timer is running, it will be stopped
   /// If timer is stopped, a new timer with the same name will be created
   Future<TaskTimer?> toggleTimer(String timerId) async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     final result = await _repository.toggleTimer(timerId);
     await _loadTimers(); // Refresh the cache
     return result;
@@ -76,6 +91,11 @@ class TimerService extends ChangeNotifier {
   
   /// Delete a timer
   Future<bool> deleteTimer(String timerId) async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     final success = await _repository.delete(timerId);
     if (success) {
       await _loadTimers(); // Refresh the cache
@@ -85,23 +105,43 @@ class TimerService extends ChangeNotifier {
   
   /// Calculate total duration of given timer IDs
   Duration calculateTotalDuration(List<String> timerIds) {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      return Duration.zero;
+    }
+    
     final now = DateTime.now();
     return _repository.calculateTotalDuration(timerIds, now);
   }
   
   /// Get all currently running timers
   Future<List<TaskTimer>> getRunningTimers() async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      return [];
+    }
+    
     return _repository.getRunningTimers();
   }
   
   /// Stop all running timers
   Future<void> stopAllRunningTimers() async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     await _repository.stopAllRunningTimers();
     await _loadTimers(); // Refresh the cache
   }
   
   /// Clear all timer data
   Future<void> clearAllTimers() async {
+    // Ensure repository is initialized
+    if (!_isInitialized) {
+      throw Exception('Repository is not initialized');
+    }
+    
     for (final timer in _cachedTimers) {
       await _repository.delete(timer.id);
     }

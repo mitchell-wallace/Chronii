@@ -195,7 +195,11 @@ class _TimerScreenState extends State<TimerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final timers = _timerService.timers;
-    final totalDuration = _timerService.calculateTotalDuration(_selectedTimerIds.toList());
+    
+    // Only calculate total duration if we have selected timers and service is initialized
+    final totalDuration = _selectedTimerIds.isEmpty ? 
+        Duration.zero : 
+        _timerService.calculateTotalDuration(_selectedTimerIds.toList());
     
     // Main content with padding on top, left, and right only
     Widget mainContent = Column(
