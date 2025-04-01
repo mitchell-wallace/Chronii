@@ -1,47 +1,47 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timer_model.dart';
+import '../repositories/base/timer_repository.dart';
+import '../repositories/repository_factory.dart';
 
-/// Service for managing timers with persistence
-class TimerService {
-  static const String _storageKey = 'timers';
-  List<TaskTimer> _timers = [];
+/// Service for managing timers
+class TimerService extends ChangeNotifier {
+  late TimerRepository _repository;
+  final RepositoryFactory _repositoryFactory;
+  List<TaskTimer> _cachedTimers = [];
+  bool _isInitialized = false;
   
   /// Get all timers
-  List<TaskTimer> get timers => List.unmodifiable(_timers);
+  List<TaskTimer> get timers => List.unmodifiable(_cachedTimers);
   
-  /// Initialize the service and load saved timers
+  /// Constructor
+  TimerService({
+    RepositoryFactory? repositoryFactory,
+  }) : _repositoryFactory = repositoryFactory ?? RepositoryFactory();
+  
+  /// Initialize the service and load timers
   Future<void> init() async {
+    if (_isInitialized) return;
+    
+    _repository = await _repositoryFactory.createTimerRepository();
     await _loadTimers();
+    _isInitialized = true;
   }
   
-  /// Load timers from persistent storage
+  /// Load timers from the repository
   Future<void> _loadTimers() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final timersJson = prefs.getString(_storageKey);
-      
-      if (timersJson != null) {
-        final List<dynamic> decoded = jsonDecode(timersJson);
-        _timers = decoded.map((json) => TaskTimer.fromJson(json)).toList();
-      }
+      _cachedTimers = await _repository.getAll();
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading timers: $e');
-      // If loading fails, we'll start with an empty list
-      _timers = [];
+      _cachedTimers = [];
     }
   }
   
-  /// Save timers to persistent storage
-  Future<void> _saveTimers() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final timersJson = jsonEncode(_timers.map((timer) => timer.toJson()).toList());
-      await prefs.setString(_storageKey, timersJson);
-    } catch (e) {
-      debugPrint('Error saving timers: $e');
-    }
+  /// Refresh the repository when authentication state changes
+  Future<void> refreshRepository() async {
+    _repository = await _repositoryFactory.createTimerRepository();
+    await _loadTimers();
   }
   
   /// Add a new timer
@@ -51,88 +51,61 @@ class TimerService {
       startTime: DateTime.now(),
     );
     
-    _timers.add(timer);
-    await _saveTimers();
+    await _repository.add(timer);
+    await _loadTimers(); // Refresh the cache
     return timer;
   }
   
   /// Update an existing timer
   Future<bool> updateTimer(TaskTimer updatedTimer) async {
-    final index = _timers.indexWhere((timer) => timer.id == updatedTimer.id);
-    if (index == -1) return false;
-    
-    _timers[index] = updatedTimer;
-    await _saveTimers();
-    return true;
+    final success = await _repository.update(updatedTimer);
+    if (success) {
+      await _loadTimers(); // Refresh the cache
+    }
+    return success;
   }
   
   /// Toggle a timer's running state
   /// If timer is running, it will be stopped
   /// If timer is stopped, a new timer with the same name will be created
   Future<TaskTimer?> toggleTimer(String timerId) async {
-    final timerIndex = _timers.indexWhere((t) => t.id == timerId);
-    if (timerIndex == -1) return null;
-    
-    final timer = _timers[timerIndex];
-    TaskTimer? newTimer;
-    
-    if (timer.isRunning) {
-      // Stop the timer
-      timer.stop();
-    } else {
-      // Create a new timer with same name
-      newTimer = timer.createNewSession();
-      _timers.add(newTimer);
-    }
-    
-    await _saveTimers();
-    return newTimer;
+    final result = await _repository.toggleTimer(timerId);
+    await _loadTimers(); // Refresh the cache
+    return result;
   }
   
   /// Delete a timer
   Future<bool> deleteTimer(String timerId) async {
-    final initialLength = _timers.length;
-    _timers.removeWhere((timer) => timer.id == timerId);
-    
-    if (_timers.length != initialLength) {
-      await _saveTimers();
-      return true;
+    final success = await _repository.delete(timerId);
+    if (success) {
+      await _loadTimers(); // Refresh the cache
     }
-    return false;
+    return success;
   }
   
   /// Calculate total duration of given timer IDs
   Duration calculateTotalDuration(List<String> timerIds) {
     final now = DateTime.now();
-    return _timers
-        .where((timer) => timerIds.contains(timer.id))
-        .fold(Duration.zero, (total, timer) => total + timer.getDuration(now));
+    return _repository.calculateTotalDuration(timerIds, now);
   }
   
   /// Get all currently running timers
-  List<TaskTimer> getRunningTimers() {
-    return _timers.where((timer) => timer.isRunning).toList();
+  Future<List<TaskTimer>> getRunningTimers() async {
+    return _repository.getRunningTimers();
   }
   
   /// Stop all running timers
   Future<void> stopAllRunningTimers() async {
-    bool changes = false;
-    
-    for (final timer in _timers) {
-      if (timer.isRunning) {
-        timer.stop();
-        changes = true;
-      }
-    }
-    
-    if (changes) {
-      await _saveTimers();
-    }
+    await _repository.stopAllRunningTimers();
+    await _loadTimers(); // Refresh the cache
   }
   
   /// Clear all timer data
   Future<void> clearAllTimers() async {
-    _timers.clear();
-    await _saveTimers();
+    for (final timer in _cachedTimers) {
+      await _repository.delete(timer.id);
+    }
+    _cachedTimers = [];
+    notifyListeners();
   }
-} 
+}

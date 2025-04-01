@@ -1,53 +1,53 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/todo_model.dart';
+import '../repositories/base/todo_repository.dart';
+import '../repositories/repository_factory.dart';
 
-/// Service for managing todos with persistence
-class TodoService {
-  static const String _storageKey = 'todos';
-  List<Todo> _todos = [];
+/// Service for managing todos
+class TodoService extends ChangeNotifier {
+  late TodoRepository _repository;
+  final RepositoryFactory _repositoryFactory;
+  List<Todo> _cachedTodos = [];
+  bool _isInitialized = false;
   
   /// Get all todos
-  List<Todo> get todos => List.unmodifiable(_todos);
+  List<Todo> get todos => List.unmodifiable(_cachedTodos);
   
   /// Get completed todos
-  List<Todo> get completedTodos => _todos.where((todo) => todo.isCompleted).toList();
+  List<Todo> get completedTodos => _cachedTodos.where((todo) => todo.isCompleted).toList();
   
   /// Get incomplete todos
-  List<Todo> get incompleteTodos => _todos.where((todo) => !todo.isCompleted).toList();
+  List<Todo> get incompleteTodos => _cachedTodos.where((todo) => !todo.isCompleted).toList();
   
-  /// Initialize the service and load saved todos
+  /// Constructor
+  TodoService({
+    RepositoryFactory? repositoryFactory,
+  }) : _repositoryFactory = repositoryFactory ?? RepositoryFactory();
+  
+  /// Initialize the service and load todos
   Future<void> init() async {
+    if (_isInitialized) return;
+    
+    _repository = await _repositoryFactory.createTodoRepository();
     await _loadTodos();
+    _isInitialized = true;
   }
   
-  /// Load todos from persistent storage
+  /// Load todos from the repository
   Future<void> _loadTodos() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final todosJson = prefs.getString(_storageKey);
-      
-      if (todosJson != null) {
-        final List<dynamic> decoded = jsonDecode(todosJson);
-        _todos = decoded.map((json) => Todo.fromJson(json)).toList();
-      }
+      _cachedTodos = await _repository.getAll();
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading todos: $e');
-      // If loading fails, we'll start with an empty list
-      _todos = [];
+      _cachedTodos = [];
     }
   }
   
-  /// Save todos to persistent storage
-  Future<void> _saveTodos() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final todosJson = jsonEncode(_todos.map((todo) => todo.toJson()).toList());
-      await prefs.setString(_storageKey, todosJson);
-    } catch (e) {
-      debugPrint('Error saving todos: $e');
-    }
+  /// Refresh the repository when authentication state changes
+  Future<void> refreshRepository() async {
+    _repository = await _repositoryFactory.createTodoRepository();
+    await _loadTodos();
   }
   
   /// Add a new todo
@@ -57,15 +57,15 @@ class TodoService {
       description: description?.trim(),
     );
     
-    _todos.add(todo);
-    await _saveTodos();
+    await _repository.add(todo);
+    await _loadTodos(); // Refresh the cache
     return todo;
   }
   
   /// Get a todo by ID
   Todo? getTodoById(String id) {
     try {
-      return _todos.firstWhere((todo) => todo.id == id);
+      return _cachedTodos.firstWhere((todo) => todo.id == id);
     } catch (e) {
       return null;
     }
@@ -73,116 +73,91 @@ class TodoService {
   
   /// Update a todo
   Future<bool> updateTodo(Todo updatedTodo) async {
-    final index = _todos.indexWhere((todo) => todo.id == updatedTodo.id);
-    if (index == -1) return false;
-    
-    _todos[index] = updatedTodo;
-    updatedTodo.updatedAt = DateTime.now();
-    await _saveTodos();
-    return true;
+    final success = await _repository.update(updatedTodo);
+    if (success) {
+      await _loadTodos(); // Refresh the cache
+    }
+    return success;
   }
   
   /// Toggle a todo's completion status
   Future<bool> toggleTodoCompletion(String todoId) async {
-    final index = _todos.indexWhere((todo) => todo.id == todoId);
-    if (index == -1) return false;
-    
-    _todos[index].toggleCompletion();
-    await _saveTodos();
-    return true;
+    final success = await _repository.toggleCompletion(todoId);
+    if (success) {
+      await _loadTodos(); // Refresh the cache
+    }
+    return success;
   }
   
   /// Delete a todo
   Future<bool> deleteTodo(String todoId) async {
-    final initialLength = _todos.length;
-    _todos.removeWhere((todo) => todo.id == todoId);
-    
-    if (_todos.length != initialLength) {
-      await _saveTodos();
-      return true;
+    final success = await _repository.delete(todoId);
+    if (success) {
+      await _loadTodos(); // Refresh the cache
     }
-    return false;
+    return success;
   }
   
   /// Delete all completed todos
   Future<int> deleteCompletedTodos() async {
-    final initialLength = _todos.length;
-    _todos.removeWhere((todo) => todo.isCompleted);
-    
-    final deletedCount = initialLength - _todos.length;
-    if (deletedCount > 0) {
-      await _saveTodos();
-    }
-    return deletedCount;
+    final count = await _repository.deleteCompleted();
+    await _loadTodos(); // Refresh the cache
+    return count;
   }
   
   /// Mark all todos as completed
   Future<int> markAllAsCompleted() async {
-    int count = 0;
-    
-    for (final todo in _todos) {
-      if (!todo.isCompleted) {
-        todo.complete();
-        count++;
-      }
-    }
-    
-    if (count > 0) {
-      await _saveTodos();
-    }
+    final count = await _repository.markAllAsCompleted();
+    await _loadTodos(); // Refresh the cache
     return count;
   }
   
   /// Mark all todos as incomplete
   Future<int> markAllAsIncomplete() async {
-    int count = 0;
-    
-    for (final todo in _todos) {
-      if (todo.isCompleted) {
-        todo.uncomplete();
-        count++;
-      }
-    }
-    
-    if (count > 0) {
-      await _saveTodos();
-    }
+    final count = await _repository.markAllAsIncomplete();
+    await _loadTodos(); // Refresh the cache
     return count;
   }
   
   /// Clear all todo data
   Future<void> clearAllTodos() async {
-    _todos.clear();
-    await _saveTodos();
+    for (final todo in _cachedTodos) {
+      await _repository.delete(todo.id);
+    }
+    _cachedTodos = [];
+    notifyListeners();
   }
   
   /// Sort todos by creation date (newest first)
   void sortByCreationDate({bool ascending = false}) {
-    _todos.sort((a, b) => ascending 
+    _cachedTodos.sort((a, b) => ascending 
         ? a.createdAt.compareTo(b.createdAt) 
         : b.createdAt.compareTo(a.createdAt));
+    notifyListeners();
   }
   
   /// Sort todos by update date (newest first)
   void sortByUpdateDate({bool ascending = false}) {
-    _todos.sort((a, b) => ascending 
+    _cachedTodos.sort((a, b) => ascending 
         ? a.updatedAt.compareTo(b.updatedAt) 
         : b.updatedAt.compareTo(a.updatedAt));
+    notifyListeners();
   }
   
   /// Sort todos by completion status
   void sortByCompletionStatus({bool completedFirst = false}) {
-    _todos.sort((a, b) => completedFirst
+    _cachedTodos.sort((a, b) => completedFirst
         ? (a.isCompleted ? -1 : 1).compareTo(b.isCompleted ? -1 : 1)
         : (a.isCompleted ? 1 : -1).compareTo(b.isCompleted ? 1 : -1));
+    notifyListeners();
   }
   
   /// Get the number of completed todos
-  int get completedCount => _todos.where((todo) => todo.isCompleted).length;
+  int get completedCount => _cachedTodos.where((todo) => todo.isCompleted).length;
   
   /// Get the number of incomplete todos
-  int get incompleteCount => _todos.where((todo) => !todo.isCompleted).length;
+  int get incompleteCount => _cachedTodos.where((todo) => !todo.isCompleted).length;
   
   /// Get the total number of todos
-  int get totalCount => _todos.length;
-} 
+  int get totalCount => _cachedTodos.length;
+}
