@@ -15,6 +15,7 @@ import 'services/auth_service.dart';
 import 'services/todo_service.dart';
 import 'services/timer_service.dart';
 import 'services/sync_service.dart';
+import 'services/navigation_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,7 @@ class _MyAppState extends State<MyApp> {
   final TodoService _todoService = TodoService();
   final TimerService _timerService = TimerService();
   final SyncService _syncService = SyncService();
+  final NavigationService _navigationService = NavigationService();
   
   @override
   void initState() {
@@ -82,6 +84,7 @@ class _MyAppState extends State<MyApp> {
     // Initialize services
     await _todoService.init();
     await _timerService.init();
+    await _navigationService.init();
     
     // Listen for auth state changes to refresh repositories
     _authService.addListener(_handleAuthStateChanged);
@@ -117,6 +120,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: _authService),
         ChangeNotifierProvider.value(value: _todoService),
         ChangeNotifierProvider.value(value: _timerService),
+        ChangeNotifierProvider.value(value: _navigationService),
         Provider.value(value: _syncService),
       ],
       child: MaterialApp(
@@ -169,7 +173,7 @@ class MyHomePage extends StatelessWidget {
             text: 'Todo List',
             iconMargin: EdgeInsets.only(bottom: 4),
           ),
-          content: const TodoScreen(),
+          content: TodoScreen(),
         ),
         TabItem(
           tab: const Tab(

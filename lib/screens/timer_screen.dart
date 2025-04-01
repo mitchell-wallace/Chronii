@@ -11,7 +11,13 @@ import '../widgets/timer/group_header.dart';
 
 /// Screen for managing task timers
 class TimerScreen extends StatefulWidget {
-  const TimerScreen({super.key});
+  /// Optional initial timer name to create on load
+  final String? initialTimerName;
+
+  const TimerScreen({
+    super.key,
+    this.initialTimerName,
+  });
 
   @override
   State<TimerScreen> createState() => _TimerScreenState();
@@ -72,12 +78,11 @@ class _TimerScreenState extends State<TimerScreen> {
       _expandedDayGroups.add(today);
       _expandedWeekGroups.add(thisWeekStart);
     });
-  }
-
-  @override
-  void dispose() {
-    _uiUpdateTimer?.cancel();
-    super.dispose();
+    
+    // Create initial timer if provided
+    if (widget.initialTimerName != null) {
+      _createTimer(widget.initialTimerName!);
+    }
   }
 
   // Create a new timer
@@ -189,6 +194,12 @@ class _TimerScreenState extends State<TimerScreen> {
         _expandedWeekGroups.add(weekStart);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _uiUpdateTimer?.cancel();
+    super.dispose();
   }
 
   @override

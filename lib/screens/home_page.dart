@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import '../widgets/counter_view.dart';
-import '../widgets/todo_list_view.dart';
+import '../screens/todo_screen.dart';
 import '../widgets/custom_title_bar.dart';
 import 'timer_screen.dart';
+import '../services/timer_service.dart';
+import '../services/navigation_service.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -17,11 +19,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   late TabController _tabController;
+  final TimerService _timerService = TimerService();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _timerService.init();
   }
 
   @override
@@ -83,16 +87,16 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         ),
         child: TabBarView(
           controller: _tabController,
-          children: const [
+          children: [
             // Counter Tab
-            CounterView(),
+            const CounterView(),
             // Todo List Tab
-            TodoListView(),
-            // Timer Tab - Now it will inherit the gradient background
+            TodoScreen(),
+            // Timer Tab
             TimerScreen(),
           ],
         ),
       ),
     );
   }
-} 
+}

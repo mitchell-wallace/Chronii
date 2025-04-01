@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/navigation_service.dart';
 import 'base_layout.dart';
 
 /// Main application layout with tabs
@@ -42,30 +43,46 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> with TickerProviderStateMixin {
   late TabController _tabController;
+  final NavigationService _navigationService = NavigationService();
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize tab controller
     _tabController = TabController(
       length: widget.tabs.length,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
+    
+    // Register with navigation service and add listener
+    _navigationService.setTabController(_tabController);
+    _tabController.addListener(_handleTabChange);
+  }
+  
+  void _handleTabChange() {
+    // Not needed since we're using a simpler approach
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Recreate the tab controller to ensure its length matches the number of tabs
+    
+    // Recreate the tab controller
     _tabController = TabController(
       length: widget.tabs.length,
       vsync: this,
       initialIndex: _tabController.index.clamp(0, widget.tabs.length - 1),
     );
+    
+    // Update the navigation service
+    _navigationService.setTabController(_tabController);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }

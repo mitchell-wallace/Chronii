@@ -1,0 +1,1 @@
+1. When testing the app, run `flutter run -d chrome` (or similar) in the background, not in the foreground.

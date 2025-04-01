@@ -45,7 +45,7 @@ class Todo {
     DateTime? updatedAt,
     String? id,
     this.dueDate,
-    this.priority = TodoPriority.medium,
+    this.priority = TodoPriority.low,
     List<String>? tags,
   }) : 
     id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),

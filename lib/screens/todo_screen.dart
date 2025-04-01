@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/todo_model.dart';
 import '../services/todo_service.dart';
+import '../services/timer_service.dart';
+import '../services/navigation_service.dart';
 import '../utils/priority_utils.dart';
 import '../widgets/base/base_empty_state.dart';
 import '../widgets/todo/todo_form.dart';
@@ -123,6 +126,7 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
   
   // Deselect all todos
   void _deselectAllTodos() {
+    print("Deselecting all todos");
     setState(() {
       _selectedTodoIds.clear();
     });
@@ -422,6 +426,13 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
     );
   }
 
+  // Create a timer from a todo
+  void _createTimerFromTodo(String todoTitle) {
+    // Use singleton NavigationService
+    final navigationService = NavigationService();
+    navigationService.createTimerFromTodo(todoTitle);
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredTodos = _getFilteredAndSortedTodos();
@@ -482,6 +493,7 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
                                   onDelete: () => _deleteTodo(todo.id),
                                   onUpdate: _updateTodo,
                                   onSelect: () => _toggleTodoSelection(todo.id),
+                                  onCreateTimer: _createTimerFromTodo,
                                 );
                               },
                             ),
@@ -495,6 +507,7 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
         if (_selectedTodoIds.isNotEmpty)
           TodoSummary(
             selectedCount: _selectedTodoIds.length,
+            selectedTodos: filteredTodos.where((todo) => _selectedTodoIds.contains(todo.id)).toList(),
             onDeselectAll: _deselectAllTodos,
             onDeleteAll: _deleteSelectedTodos,
           ),

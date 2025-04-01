@@ -27,6 +27,9 @@ class BaseItemCard extends StatelessWidget {
   /// Callback when the item is tapped
   final VoidCallback? onTap;
   
+  /// Callback when the item is long-pressed
+  final VoidCallback? onLongPress;
+  
   /// Callback when the item is deleted
   final VoidCallback? onDelete;
   
@@ -54,6 +57,7 @@ class BaseItemCard extends StatelessWidget {
     this.leading,
     this.actions,
     this.onTap,
+    this.onLongPress,
     this.onDelete,
     this.additionalContent,
     this.cardColor,
@@ -112,6 +116,7 @@ class BaseItemCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

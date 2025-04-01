@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/todo_model.dart';
 import '../../utils/priority_utils.dart';
-import 'todo_edit_dialog.dart';
+import '../base/base_item_card.dart';
+import 'todo_menu_actions.dart';
 
 /// A card widget for displaying a todo item
 class TodoCard extends StatelessWidget {
@@ -15,9 +16,6 @@ class TodoCard extends StatelessWidget {
   /// Callback for when the todo is deleted
   final VoidCallback onDelete;
   
-  /// Callback for when the card is tapped
-  final VoidCallback? onTap;
-  
   /// Callback for when the todo is updated
   final Function(Todo) onUpdate;
   
@@ -25,7 +23,10 @@ class TodoCard extends StatelessWidget {
   final bool isSelected;
   
   /// Callback for when selection state changes
-  final VoidCallback? onSelect;
+  final VoidCallback onSelect;
+  
+  /// Callback for when the stopwatch button is pressed to create a timer from this todo
+  final Function(String) onCreateTimer;
 
   const TodoCard({
     super.key,
@@ -33,9 +34,9 @@ class TodoCard extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onUpdate,
-    this.onTap,
-    this.isSelected = false,
-    this.onSelect,
+    required this.onSelect,
+    required this.isSelected,
+    required this.onCreateTimer,
   });
 
   @override
@@ -49,228 +50,144 @@ class TodoCard extends StatelessWidget {
         ? DateFormat('MMM d, yyyy').format(todo.dueDate!)
         : null;
     
-    // Get priority color and icon
+    // Get priority color
     final priorityColor = PriorityUtils.getPriorityColor(todo.priority);
-    final priorityIcon = PriorityUtils.getPriorityIcon(todo.priority);
     
     // Create truncated description (show first two lines only)
     final String? truncatedDescription = todo.description != null && todo.description!.isNotEmpty
         ? todo.description!.split('\n').take(2).join('\n')
         : null;
     
-    // Check if description is truncated
-    final bool isDescriptionTruncated = todo.description != null && 
-        todo.description!.split('\n').length > 2;
+    // Create tags and due date subtitles
+    final List<Widget> chips = [];
     
-    return Card(
-      key: Key(todo.id),
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: isSelected
-            ? BorderSide(color: theme.colorScheme.primary, width: 2)
-            : BorderSide.none,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap ?? () => _showEditDialog(context),
-        onLongPress: onSelect,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Priority indicator
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: priorityColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 8),
-                  
-                  // Checkbox
-                  Checkbox(
-                    value: todo.isCompleted,
-                    onChanged: (_) => onToggle(),
-                    activeColor: theme.colorScheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 8),
-                  
-                  // Todo title
-                  Expanded(
-                    child: Text(
-                      todo.title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
-                        color: todo.isCompleted 
-                            ? theme.colorScheme.onSurface.withOpacity(0.6)
-                            : theme.colorScheme.onSurface,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  
-                  // Selection indicator
-                  if (onSelect != null)
-                    IconButton(
-                      icon: Icon(
-                        isSelected ? Icons.check_circle : Icons.circle_outlined,
-                        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                      ),
-                      onPressed: onSelect,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  
-                  const SizedBox(width: 8),
-                  
-                  // Edit button
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () => _showEditDialog(context),
-                    tooltip: 'Edit Task',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  
-                  // Delete button
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: onDelete,
-                    tooltip: 'Delete Task',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              
-              // Description
-              if (truncatedDescription != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 36),
-                  child: Text(
-                    truncatedDescription,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              
-              if (isDescriptionTruncated)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, left: 36),
-                  child: Text(
-                    '...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ),
-              
-              // Due date and tags
-              if (hasDueDate || todo.tags.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 36),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      // Due date chip
-                      if (hasDueDate)
-                        Chip(
-                          label: Text(
-                            formattedDueDate!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: isOverdue 
-                                  ? Colors.white 
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          backgroundColor: isOverdue 
-                              ? Colors.red 
-                              : theme.colorScheme.surfaceVariant,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          visualDensity: VisualDensity.compact,
-                          avatar: Icon(
-                            Icons.calendar_today_outlined,
-                            size: 16,
-                            color: isOverdue 
-                                ? Colors.white 
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      
-                      // Tag chips (show up to 2 tags)
-                      ...todo.tags.take(2).map((tag) => Chip(
-                        label: Text(
-                          tag,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        visualDensity: VisualDensity.compact,
-                      )),
-                      
-                      // Show count of remaining tags if any
-                      if (todo.tags.length > 2)
-                        Chip(
-                          label: Text(
-                            '+${todo.tags.length - 2}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                          backgroundColor: theme.colorScheme.secondaryContainer,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                    ],
-                  ),
-                ),
-            ],
+    // Add due date chip if present
+    if (hasDueDate) {
+      chips.add(Chip(
+        label: Text(
+          formattedDueDate!,
+          style: TextStyle(
+            fontSize: 12,
+            color: isOverdue ? Colors.white : theme.colorScheme.onSurfaceVariant,
           ),
         ),
+        backgroundColor: isOverdue 
+            ? Colors.red.withOpacity(0.7)
+            : theme.colorScheme.surfaceVariant,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+      ));
+    }
+    
+    // Add up to 2 tags if present
+    if (todo.tags.isNotEmpty) {
+      final displayTags = todo.tags.take(2).toList();
+      for (final tag in displayTags) {
+        chips.add(Chip(
+          label: Text(
+            tag,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          backgroundColor: theme.colorScheme.surfaceVariant,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        ));
+      }
+      
+      // Add count indicator if there are more tags
+      if (todo.tags.length > 2) {
+        chips.add(Chip(
+          label: Text(
+            '+${todo.tags.length - 2}',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          backgroundColor: theme.colorScheme.surfaceVariant,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        ));
+      }
+    }
+    
+    // Create checkbox for completion toggle
+    final checkbox = Checkbox(
+      value: todo.isCompleted,
+      onChanged: (_) => onToggle(),
+      activeColor: theme.colorScheme.primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
       ),
     );
-  }
-  
-  void _showEditDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => TodoEditDialog(
-        todo: todo,
-        onUpdate: onUpdate,
+    
+    // Create menu button for edit and delete
+    final menuButton = TodoMenuButton(
+      todo: todo, 
+      onUpdate: onUpdate, 
+      onDelete: onDelete
+    );
+    
+    // Create selection indicator
+    final selectionIndicator = Icon(
+      isSelected ? Icons.check_circle : Icons.circle_outlined,
+      color: isSelected ? theme.colorScheme.primary : theme.disabledColor,
+    );
+    
+    // Create stopwatch button
+    final stopwatchButton = IconButton(
+      icon: const Icon(
+        Icons.timer,
+        color: Colors.blue,
+        size: 22,
       ),
+      onPressed: () => onCreateTimer(todo.title),
+      tooltip: 'Create timer from this task',
+    );
+    
+    // Wrap in a container with a priority color strip on the left
+    return Stack(
+      children: [
+        // Priority color strip
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: Container(
+            width: 4,
+            color: priorityColor,
+          ),
+        ),
+        
+        // Base item card with padding to accommodate the priority strip
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: BaseItemCard(
+            itemKey: Key(todo.id),
+            title: todo.title,
+            subtitle: truncatedDescription,
+            additionalContent: chips.isEmpty ? null : Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: chips,
+            ),
+            isSelected: isSelected,
+            isCompleted: todo.isCompleted,
+            completedDecoration: TextDecoration.lineThrough,
+            onTap: onSelect,
+            onLongPress: onSelect,
+            onDelete: onDelete,
+            leading: checkbox,
+            actions: [stopwatchButton, menuButton],
+          ),
+        ),
+      ],
     );
   }
 }

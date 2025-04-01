@@ -85,6 +85,7 @@ class TimerCard extends StatelessWidget {
       isCompleted: false,
       completedDecoration: null, // Don't use strikethrough for timers
       onTap: onSelect,
+      onLongPress: onSelect, // Added long press to select
       onDelete: onDelete,
       leading: selectionIndicator,
       actions: [actionButton, menuButton],
