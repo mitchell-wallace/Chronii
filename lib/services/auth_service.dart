@@ -8,6 +8,9 @@ class AuthService extends ChangeNotifier {
   // Singleton instance
   static final AuthService _instance = AuthService._internal();
   
+  // Test instance for dependency injection
+  static AuthService? _testInstance;
+  
   // Private constructor for singleton
   AuthService._internal() : _auth = FirebaseAuth.instance {
     // Listen to auth state changes
@@ -16,9 +19,28 @@ class AuthService extends ChangeNotifier {
     });
   }
   
-  // Factory constructor to return the singleton
+  // Private constructor for testing with dependency injection
+  AuthService._withAuth(this._auth) {
+    // Listen to auth state changes
+    _auth.authStateChanges().listen((User? user) {
+      notifyListeners();
+    });
+  }
+  
+  // Factory constructor to return the singleton or test instance
   factory AuthService() {
-    return _instance;
+    return _testInstance ?? _instance;
+  }
+  
+  // Factory constructor for testing with dependency injection
+  factory AuthService.withAuth(FirebaseAuth auth) {
+    _testInstance = AuthService._withAuth(auth);
+    return _testInstance!;
+  }
+  
+  // Reset the test instance (use after tests)
+  static void resetInstance() {
+    _testInstance = null;
   }
   
   /// The current authenticated user, or null if not authenticated
