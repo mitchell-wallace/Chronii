@@ -135,7 +135,7 @@ class _MyAppState extends State<MyApp> {
         ),
         home: Consumer<AuthService>(
           builder: (context, authService, _) {
-            return authService.isFullyAuthenticated 
+            return authService.isAuthenticated 
               ? const MyHomePage(title: 'Chronii') 
               : LoginScreen(onLoginComplete: _handleLoginComplete);
           },
