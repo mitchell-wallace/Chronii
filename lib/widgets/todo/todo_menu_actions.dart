@@ -59,8 +59,10 @@ class TodoMenuButton extends StatelessWidget {
   }
 
   void _editTodo(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => TodoEditDialog(
         todo: todo,
         onUpdate: (updatedTodo) {
