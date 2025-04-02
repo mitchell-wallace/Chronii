@@ -48,7 +48,7 @@ class NavigationService extends ChangeNotifier {
     // Create the timer
     await _timerService.addTimer(todoTitle);
     
-    // Navigate to timer tab
-    navigateToTab(2);
+    // Navigate to timer tab (index 0 since Timers is now the first tab)
+    navigateToTab(0);
   }
 }

@@ -10,12 +10,14 @@ import 'screens/counter_screen.dart';
 import 'screens/todo_screen.dart';
 import 'screens/timer_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/note_screen.dart';
 import 'utils/window_helper.dart';
 import 'services/auth_service.dart';
 import 'services/todo_service.dart';
 import 'services/timer_service.dart';
 import 'services/sync_service.dart';
 import 'services/navigation_service.dart';
+import 'services/note_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +70,7 @@ class _MyAppState extends State<MyApp> {
   final TimerService _timerService = TimerService();
   final SyncService _syncService = SyncService();
   final NavigationService _navigationService = NavigationService();
+  final NoteService _noteService = NoteService();
   
   @override
   void initState() {
@@ -86,6 +89,7 @@ class _MyAppState extends State<MyApp> {
     // Initialize data services (will be empty if not authenticated)
     await _todoService.init();
     await _timerService.init();
+    await _noteService.init();
     
     // Listen for auth state changes to refresh repositories
     _authService.addListener(_handleAuthStateChanged);
@@ -95,6 +99,7 @@ class _MyAppState extends State<MyApp> {
     // Refresh repositories when auth state changes
     await _todoService.refreshRepository();
     await _timerService.refreshRepository();
+    await _noteService.refreshRepository();
   }
   
   @override
@@ -122,6 +127,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: _todoService),
         ChangeNotifierProvider.value(value: _timerService),
         ChangeNotifierProvider.value(value: _navigationService),
+        ChangeNotifierProvider.value(value: _noteService),
         Provider.value(value: _syncService),
       ],
       child: MaterialApp(
@@ -162,11 +168,11 @@ class MyHomePage extends StatelessWidget {
       tabs: [
         TabItem(
           tab: const Tab(
-            icon: Icon(Icons.add_circle_outline),
-            text: 'Counter',
+            icon: Icon(Icons.timer),
+            text: 'Timers',
             iconMargin: EdgeInsets.only(bottom: 4),
           ),
-          content: const CounterScreen(),
+          content: const TimerScreen(),
         ),
         TabItem(
           tab: const Tab(
@@ -178,11 +184,11 @@ class MyHomePage extends StatelessWidget {
         ),
         TabItem(
           tab: const Tab(
-            icon: Icon(Icons.timer),
-            text: 'Timers',
+            icon: Icon(Icons.note_alt_outlined),
+            text: 'Notes',
             iconMargin: EdgeInsets.only(bottom: 4),
           ),
-          content: const TimerScreen(),
+          content: const NoteScreen(),
         ),
       ],
     );
