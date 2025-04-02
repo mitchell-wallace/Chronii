@@ -76,15 +76,16 @@ class _MyAppState extends State<MyApp> {
   }
   
   Future<void> _initializeApp() async {
-    // Sign in anonymously if not already authenticated
-    if (!_authService.isAuthenticated) {
-      await _authService.signInAnonymously();
-    }
+    // Initialize services that don't depend on authentication
+    await _navigationService.init();
     
-    // Initialize services
+    // Disable automatic anonymous authentication on all platforms
+    debugPrint('Automatic anonymous authentication is disabled');
+    // User will need to authenticate manually via the login screen
+    
+    // Initialize data services (will be empty if not authenticated)
     await _todoService.init();
     await _timerService.init();
-    await _navigationService.init();
     
     // Listen for auth state changes to refresh repositories
     _authService.addListener(_handleAuthStateChanged);

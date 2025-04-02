@@ -66,7 +66,6 @@ class TodoMenuButton extends StatelessWidget {
       builder: (context) => TodoEditDialog(
         todo: todo,
         onUpdate: (updatedTodo) {
-          Navigator.of(context).pop();
           onUpdate(updatedTodo);
         },
       ),
