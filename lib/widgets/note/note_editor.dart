@@ -129,28 +129,6 @@ class _NoteEditorState extends State<NoteEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Note toolbar with delete button
-          Row(
-            children: [
-              // Display last edited time
-              Text(
-                'Last edited: ${_formatDate(widget.note.updatedAt)}',
-                style: theme.textTheme.bodySmall,
-              ),
-              
-              const Spacer(),
-              
-              // Delete note button
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                tooltip: 'Delete Note',
-                onPressed: _confirmDeleteNote,
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
           // Title field
           TextField(
             controller: _titleController,
@@ -161,6 +139,19 @@ class _NoteEditorState extends State<NoteEditor> {
               contentPadding: EdgeInsets.symmetric(vertical: 8),
             ),
             maxLines: 1,
+          ),
+          
+          // Display last edited time - more prominent now
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              'Last edited: ${_formatDate(widget.note.updatedAt)}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.primary.withOpacity(0.8),
+              ),
+            ),
           ),
           
           const Divider(),

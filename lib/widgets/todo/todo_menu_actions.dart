@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/todo_model.dart';
+import '../base/base_menu_actions.dart';
 import 'todo_edit_dialog.dart';
 
 /// A button to show the todo options menu (three vertical dots)
@@ -23,9 +24,21 @@ class TodoMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    final menuItems = <PopupMenuItem<String>>[
+      BaseMenuButton.createMenuItem(
+        value: 'edit',
+        icon: Icons.edit,
+        text: 'Edit',
+      ),
+      BaseMenuButton.createMenuItem(
+        value: 'delete',
+        icon: Icons.delete,
+        text: 'Delete',
+      ),
+    ];
+    
+    return BaseMenuButton(
+      items: menuItems,
       onSelected: (value) {
         if (value == 'edit') {
           _editTodo(context);
@@ -33,28 +46,6 @@ class TodoMenuButton extends StatelessWidget {
           onDelete();
         }
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem<String>(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit, size: 20),
-              SizedBox(width: 8),
-              Text('Edit'),
-            ],
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete, size: 20),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

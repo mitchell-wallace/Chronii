@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/note_model.dart';
+import 'note_menu_actions.dart';
 
 /// Widget for displaying notes in a grid view
 class NoteGrid extends StatelessWidget {
@@ -93,41 +94,10 @@ class NoteGrid extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      size: 20,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _confirmDeleteNote(context, note);
-                      } else if (value == 'edit') {
-                        onNoteSelected(note);
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 18),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
+                  NoteMenuButton(
+                    note: note,
+                    onUpdate: (_) => onNoteSelected(note),
+                    onDelete: () => _confirmDeleteNote(context, note),
                   ),
                 ],
               ),

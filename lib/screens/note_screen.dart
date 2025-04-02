@@ -4,6 +4,7 @@ import '../services/note_service.dart';
 import '../widgets/base/base_empty_state.dart';
 import '../widgets/note/note_editor.dart';
 import '../widgets/note/note_grid.dart';
+import '../widgets/note/note_menu_actions.dart';
 
 /// Screen for displaying and managing notes
 class NoteScreen extends StatefulWidget {
@@ -156,14 +157,25 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
                 onPressed: _toggleViewMode,
               ),
               
-              // Spacer to push tab bar to center
+              // Spacer to push actions to the right
               const Spacer(),
               
-              // View mode indicator
-              Text(
-                _isGridMode ? 'Grid View' : 'Editor',
-                style: theme.textTheme.bodySmall,
-              ),
+              // Note menu button (only in editor mode and when there are notes)
+              if (!_isGridMode && _noteService.notes.isNotEmpty)
+                NoteMenuButton(
+                  note: _noteService.notes[_tabController.index],
+                  onUpdate: (_) {}, // No action needed as we're already in edit mode
+                  onDelete: () {
+                    if (_noteService.notes.isEmpty) return;
+                    
+                    final currentNoteIndex = _tabController.index;
+                    if (currentNoteIndex >= 0 && currentNoteIndex < _noteService.notes.length) {
+                      final currentNoteId = _noteService.notes[currentNoteIndex].id;
+                      _deleteNote(currentNoteId);
+                    }
+                  },
+                  includeDelete: true,
+                ),
             ],
           ),
         ),
