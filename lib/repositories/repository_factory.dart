@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'base/todo_repository.dart';
 import 'base/timer_repository.dart';
+import 'base/note_repository.dart';
 import 'local/local_todo_repository.dart';
 import 'local/local_timer_repository.dart';
+import 'local/local_note_repository.dart';
 import 'firebase/firebase_todo_repository.dart';
 import 'firebase/firebase_timer_repository.dart';
+import 'firebase/firebase_note_repository.dart';
 
 /// Factory for creating repository instances based on authentication state
 /// Provides the correct implementation (local or firebase) based on whether
@@ -51,6 +54,23 @@ class RepositoryFactory {
     } else {
       // Anonymous user - use local storage
       repository = LocalTimerRepository();
+    }
+    
+    await repository.init();
+    return repository;
+  }
+  
+  /// Creates a NoteRepository based on authentication state
+  Future<BaseNoteRepository> createNoteRepository() async {
+    final user = _auth.currentUser;
+    BaseNoteRepository repository;
+    
+    if (user != null && !user.isAnonymous) {
+      // Authenticated user - use Firebase
+      repository = FirebaseNoteRepository();
+    } else {
+      // Anonymous or unauthenticated user - use local storage
+      repository = LocalNoteRepository();
     }
     
     await repository.init();

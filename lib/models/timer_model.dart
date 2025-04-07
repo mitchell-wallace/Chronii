@@ -13,6 +13,12 @@ class TaskTimer {
   
   /// When the timer was stopped (null if still running)
   DateTime? endTime;
+  
+  /// When the timer record was created
+  final DateTime createdAt;
+
+  /// When the timer record was last updated
+  DateTime updatedAt;
 
   /// Constructor for creating a new timer
   TaskTimer({
@@ -20,7 +26,12 @@ class TaskTimer {
     required this.startTime,
     this.endTime,
     String? id,
-  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) : 
+    id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    createdAt = createdAt ?? DateTime.now(),
+    updatedAt = updatedAt ?? DateTime.now();
 
   /// Checks if the timer is currently running
   bool get isRunning => endTime == null;
@@ -35,6 +46,7 @@ class TaskTimer {
   void stop() {
     if (isRunning) {
       endTime = DateTime.now();
+      updatedAt = endTime!; // Update timestamp when stopped
     }
   }
 
@@ -52,6 +64,8 @@ class TaskTimer {
     'name': name,
     'startTime': startTime.toIso8601String(),
     'endTime': endTime?.toIso8601String(),
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
   };
 
   /// Creates a timer from JSON data
@@ -62,6 +76,13 @@ class TaskTimer {
         name: json['name'] as String,
         startTime: DateTime.parse(json['startTime'] as String),
         endTime: json['endTime'] != null ? DateTime.parse(json['endTime'] as String) : null,
+        // Handle missing timestamps for backward compatibility
+        createdAt: json['createdAt'] != null 
+            ? DateTime.parse(json['createdAt'] as String)
+            : DateTime.parse(json['startTime'] as String), // Fallback to startTime
+        updatedAt: json['updatedAt'] != null 
+            ? DateTime.parse(json['updatedAt'] as String)
+            : DateTime.now(), // Fallback to now if missing
       );
     } catch (e) {
       debugPrint('Error parsing timer from JSON: $e');
@@ -78,12 +99,16 @@ class TaskTimer {
     String? name,
     DateTime? startTime,
     DateTime? Function()? endTime,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return TaskTimer(
       id: id,
       name: name ?? this.name,
       startTime: startTime ?? this.startTime,
       endTime: endTime != null ? endTime() : this.endTime,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 

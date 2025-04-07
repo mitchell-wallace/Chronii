@@ -2,13 +2,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/todo_model.dart';
 import '../models/timer_model.dart';
+import '../models/note_model.dart';
 import '../repositories/repository_factory.dart';
 import '../repositories/base/todo_repository.dart';
 import '../repositories/base/timer_repository.dart';
+import '../repositories/base/note_repository.dart';
 import '../repositories/local/local_todo_repository.dart';
 import '../repositories/local/local_timer_repository.dart';
+import '../repositories/local/local_note_repository.dart';
 import '../repositories/firebase/firebase_todo_repository.dart';
 import '../repositories/firebase/firebase_timer_repository.dart';
+import '../repositories/firebase/firebase_note_repository.dart';
 
 /// Service that handles synchronization of data between local and cloud storage
 /// Particularly useful when converting from anonymous to authenticated user
@@ -24,6 +28,7 @@ class SyncService {
   Future<void> synchronizeDataToCloud() async {
     await _synchronizeTodos();
     await _synchronizeTimers();
+    await _synchronizeNotes();
   }
 
   /// Synchronize all data from cloud to local storage
@@ -31,111 +36,141 @@ class SyncService {
   Future<void> synchronizeDataToLocal() async {
     await _synchronizeTodos(toCloud: false);
     await _synchronizeTimers(toCloud: false);
+    await _synchronizeNotes(toCloud: false);
   }
   
-  /// Synchronize todos between local and cloud storage
+  /// Synchronize todos between local and cloud storage using timestamp comparison
   Future<void> _synchronizeTodos({bool toCloud = true}) async {
-    try {
-      // Access both repositories directly to avoid the factory choosing based on auth state
-      final localRepo = LocalTodoRepository();
-      await localRepo.init();
-      
-      // For cloud sync, we need an authenticated user
-      if (toCloud && FirebaseAuth.instance.currentUser == null) {
-        debugPrint('Cannot sync to cloud: No authenticated user');
-        return;
-      }
-      
-      if (toCloud) {
-        // Syncing from local to cloud
-        final cloudRepo = FirebaseTodoRepository();
-        await cloudRepo.init();
-        
-        // Get all local todos
-        final todos = await localRepo.getAll();
-        
-        // Upload each todo to the cloud
-        for (final todo in todos) {
-          await cloudRepo.add(todo);
-        }
-        
-        debugPrint('Successfully synchronized ${todos.length} todos to cloud');
-      } else {
-        // Syncing from cloud to local
-        // This assumes the user was previously authenticated
-        if (FirebaseAuth.instance.currentUser == null) {
-          debugPrint('Cannot sync from cloud: No authenticated user');
-          return;
-        }
-        
-        final cloudRepo = FirebaseTodoRepository();
-        await cloudRepo.init();
-        
-        // Get all cloud todos
-        final todos = await cloudRepo.getAll();
-        
-        // Save each todo locally
-        for (final todo in todos) {
-          await localRepo.add(todo);
-        }
-        
-        debugPrint('Successfully synchronized ${todos.length} todos to local storage');
-      }
-    } catch (e) {
-      debugPrint('Error synchronizing todos: $e');
-    }
+    await _synchronizeItems<Todo>(
+      localRepoFactory: () async => LocalTodoRepository(),
+      cloudRepoFactory: () async => FirebaseTodoRepository(),
+      toCloud: toCloud,
+      itemType: 'todos',
+    );
+  }
+ 
+  /// Synchronize timers between local and cloud storage using timestamp comparison
+  Future<void> _synchronizeTimers({bool toCloud = true}) async {
+    await _synchronizeItems<TaskTimer>(
+      localRepoFactory: () async => LocalTimerRepository(),
+      cloudRepoFactory: () async => FirebaseTimerRepository(),
+      toCloud: toCloud,
+      itemType: 'timers',
+    );
+  }
+   
+  /// Synchronize notes between local and cloud storage using timestamp comparison
+  Future<void> _synchronizeNotes({bool toCloud = true}) async {
+    await _synchronizeItems<Note>(
+      localRepoFactory: () async => LocalNoteRepository(),
+      cloudRepoFactory: () async => FirebaseNoteRepository(),
+      toCloud: toCloud,
+      itemType: 'notes',
+    );
   }
   
-  /// Synchronize timers between local and cloud storage
-  Future<void> _synchronizeTimers({bool toCloud = true}) async {
+  /// Generic function to synchronize items between local and cloud repositories
+  /// based on their `updatedAt` timestamp.
+  Future<void> _synchronizeItems<T>({ 
+    required Future<dynamic> Function() localRepoFactory, // Returns BaseRepository<T> conceptually
+    required Future<dynamic> Function() cloudRepoFactory, // Returns BaseRepository<T> conceptually
+    required bool toCloud,
+    required String itemType, // For logging
+  }) async {
     try {
-      // Access both repositories directly to avoid the factory choosing based on auth state
-      final localRepo = LocalTimerRepository();
+      // Get repositories
+      final localRepo = await localRepoFactory();
       await localRepo.init();
-      
-      // For cloud sync, we need an authenticated user
-      if (toCloud && FirebaseAuth.instance.currentUser == null) {
-        debugPrint('Cannot sync to cloud: No authenticated user');
+
+      // Cloud requires authenticated user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) {
+        debugPrint('Cannot sync $itemType: No authenticated (non-anonymous) user');
         return;
       }
-      
+      final cloudRepo = await cloudRepoFactory();
+      await cloudRepo.init();
+
+      // Fetch items
+      final List<T> localItems = await localRepo.getAll();
+      final List<T> cloudItems = await cloudRepo.getAll();
+
+      // Create maps for easy lookup by ID
+      // Assumes items have `id` and `updatedAt` properties
+      final localMap = { for (var item in localItems) (item as dynamic).id : item };
+      final cloudMap = { for (var item in cloudItems) (item as dynamic).id : item };
+
+      int updatedCount = 0;
+      int addedCount = 0;
+      List<Future> syncFutures = [];
+
       if (toCloud) {
-        // Syncing from local to cloud
-        final cloudRepo = FirebaseTimerRepository();
-        await cloudRepo.init();
-        
-        // Get all local timers
-        final timers = await localRepo.getAll();
-        
-        // Upload each timer to the cloud
-        for (final timer in timers) {
-          await cloudRepo.add(timer);
+        // Sync Local -> Cloud
+        for (final localItem in localItems) {
+          final String localId = (localItem as dynamic).id;
+          final DateTime localUpdatedAt = (localItem as dynamic).updatedAt;
+          final cloudItem = cloudMap[localId];
+
+          if (cloudItem == null) {
+            // Item exists locally, not in cloud -> Add to cloud
+            syncFutures.add(cloudRepo.add(localItem).then((_) => addedCount++));
+          } else {
+            // Item exists in both -> Compare timestamps
+            final DateTime cloudUpdatedAt = (cloudItem as dynamic).updatedAt;
+            if (localUpdatedAt.isAfter(cloudUpdatedAt)) {
+              // Local is newer -> Update cloud
+              syncFutures.add(cloudRepo.update(localItem).then((_) => updatedCount++));
+            }
+            // If cloud is newer or same, do nothing for local -> cloud sync
+          }
         }
-        
-        debugPrint('Successfully synchronized ${timers.length} timers to cloud');
+        await Future.wait(syncFutures);
+        if (addedCount > 0 || updatedCount > 0) {
+          debugPrint('Synced $itemType to cloud: $addedCount added, $updatedCount updated.');
+        }
+
+        // Optional: Check cloud items not present locally (were they deleted locally?)
+
+        // Optional: Clear local after sync? 
+        // if (addedCount + updatedCount > 0 && itemType != 'notes') { // Maybe don't clear notes?
+        //   List<Future> deleteFutures = localItems.map((item) => localRepo.delete((item as dynamic).id)).toList();
+        //   await Future.wait(deleteFutures);
+        //   debugPrint('Cleared $itemType from local storage after cloud sync.');
+        // }
+
       } else {
-        // Syncing from cloud to local
-        // This assumes the user was previously authenticated
-        if (FirebaseAuth.instance.currentUser == null) {
-          debugPrint('Cannot sync from cloud: No authenticated user');
-          return;
+        // Sync Cloud -> Local
+        for (final cloudItem in cloudItems) {
+          final String cloudId = (cloudItem as dynamic).id;
+          final DateTime cloudUpdatedAt = (cloudItem as dynamic).updatedAt;
+          final localItem = localMap[cloudId];
+
+          if (localItem == null) {
+            // Item exists in cloud, not locally -> Add locally
+             syncFutures.add(localRepo.add(cloudItem).then((_) => addedCount++));
+          } else {
+            // Item exists in both -> Compare timestamps
+            final DateTime localUpdatedAt = (localItem as dynamic).updatedAt;
+            if (cloudUpdatedAt.isAfter(localUpdatedAt)) {
+               // Cloud is newer -> Update local
+               syncFutures.add(localRepo.update(cloudItem).then((_) => updatedCount++));
+            }
+             // If local is newer or same, do nothing for cloud -> local sync
+          }
+        }
+        await Future.wait(syncFutures);
+        if (addedCount > 0 || updatedCount > 0) {
+          debugPrint('Synced $itemType to local: $addedCount added, $updatedCount updated.');
         }
         
-        final cloudRepo = FirebaseTimerRepository();
-        await cloudRepo.init();
-        
-        // Get all cloud timers
-        final timers = await cloudRepo.getAll();
-        
-        // Save each timer locally
-        for (final timer in timers) {
-          await localRepo.add(timer);
-        }
-        
-        debugPrint('Successfully synchronized ${timers.length} timers to local storage');
+        // Optional: Check local items not present in cloud (were they deleted in cloud?)
+        // For simplicity, we're not handling deletions initiated from the other side during this sync direction.
       }
-    } catch (e) {
-      debugPrint('Error synchronizing timers: $e');
+
+    } catch (e, stackTrace) {
+        debugPrint('Error synchronizing $itemType (${toCloud ? 'toCloud' : 'toLocal'}): $e');
+        // Providing stack trace for better debugging
+        debugPrintStack(label: 'SyncService Error', stackTrace: stackTrace); 
     }
   }
   

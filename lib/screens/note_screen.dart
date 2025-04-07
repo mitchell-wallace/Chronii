@@ -97,8 +97,9 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   }
   
   // Create a new note
-  void _createNewNote() {
-    _noteService.addNote('', '');
+  Future<void> _createNewNote() async {
+    // Add note and close other notes (handled in NoteService.addNote)
+    final newNote = await _noteService.addNote('', '');
     
     // Switch to edit mode if in grid mode
     if (_isGridMode) {
@@ -107,12 +108,15 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
       });
     }
     
-    // Ensure the new note is shown in the editor
-    final openNotes = _noteService.openNotes;
-    if (openNotes.isNotEmpty) {
-      // Switch to the last tab (the new note)
-      _tabController.animateTo(openNotes.length - 1);
-    }
+    // The tab controller should update automatically via listener
+    // But we need to ensure the right tab is selected
+    Future.delayed(Duration.zero, () {
+      final openNotes = _noteService.openNotes;
+      final index = openNotes.indexWhere((note) => note.id == newNote.id);
+      if (index >= 0 && _tabController.length > index) {
+        _tabController.animateTo(index);
+      }
+    });
   }
   
   // Update a note
@@ -292,7 +296,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     
     return Column(
       children: [
-        // Thin tab bar for notes
+        // Thin tab bar for notes - using isScrollable for simple horizontal scrolling
         Container(
           height: 40,
           decoration: BoxDecoration(
@@ -306,7 +310,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
           ),
           child: TabBar(
             controller: _tabController,
-            isScrollable: true,
+            isScrollable: true, // This enables horizontal scrolling with mouse wheel and drag
             tabAlignment: TabAlignment.start,
             dividerColor: Colors.transparent,
             labelColor: theme.colorScheme.primary,
@@ -361,8 +365,10 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              note.title.isEmpty ? 'Untitled Note' : note.title,
+              note.title.isEmpty ? 'Untitled Note' : 
+                (note.title.length > 20 ? '${note.title.substring(0, 20)}...' : note.title),
               style: const TextStyle(fontSize: 13),
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(width: 4),
             Icon(Icons.circle, size: 8, color: theme.colorScheme.primary.withOpacity(0.5)),

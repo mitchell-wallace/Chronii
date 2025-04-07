@@ -53,15 +53,30 @@ class _NoteEditorState extends State<NoteEditor> {
     super.didUpdateWidget(oldWidget);
     
     // Update controllers if the note changes
-    if (oldWidget.note.id != widget.note.id ||
-        oldWidget.note.title != widget.note.title ||
-        oldWidget.note.content != widget.note.content) {
-      
+    if (oldWidget.note.id != widget.note.id) {
+      // Only completely refresh controllers if it's a different note
       _titleController.text = widget.note.title;
       _contentController.text = widget.note.content;
-      
-      // Reset unsaved changes state
       _hasUnsavedChanges = false;
+    } else if (!_hasUnsavedChanges) {
+      // Only update if we don't have unsaved changes
+      // This prevents overriding user's current edits and text selection
+      // when debounce save completes
+      if (_titleController.text != widget.note.title) {
+        // Save current selection
+        final selection = _titleController.selection;
+        _titleController.text = widget.note.title;
+        // Restore selection
+        _titleController.selection = selection;
+      }
+      
+      if (_contentController.text != widget.note.content) {
+        // Save current selection
+        final selection = _contentController.selection;
+        _contentController.text = widget.note.content;
+        // Restore selection
+        _contentController.selection = selection;
+      }
     }
   }
   
@@ -92,6 +107,10 @@ class _NoteEditorState extends State<NoteEditor> {
       content: _contentController.text,
       updatedAt: DateTime.now(),
     );
+    
+    // Track current cursor positions before update
+    final titleSelection = _titleController.selection;
+    final contentSelection = _contentController.selection;
     
     // Call the update callback
     widget.onNoteUpdate(updatedNote);
