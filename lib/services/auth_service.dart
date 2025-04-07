@@ -23,14 +23,18 @@ class AuthService extends ChangeNotifier {
   
   // Initialize auth with platform-specific settings
   Future<void> _initializeAuth() async {
-    // Set persistence to SESSION only on Windows to prevent auto-login
-    if (!kIsWeb && Platform.isWindows) {
+    // Only attempt to set persistence on web platforms
+    if (kIsWeb) {
+      // Web-specific authentication setup
       try {
         await _auth.setPersistence(Persistence.SESSION);
-        debugPrint('Firebase Auth persistence set to SESSION on Windows');
+        debugPrint('Firebase Auth persistence set to SESSION on web');
       } catch (e) {
         debugPrint('Error setting Firebase Auth persistence: $e');
       }
+    } else {
+      // For non-web platforms like Windows
+      debugPrint('Running on non-web platform, skipping web-specific auth setup');
     }
   }
   

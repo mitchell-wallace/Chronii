@@ -10,6 +10,7 @@ class CustomTitleBar extends StatefulWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
   final double height;
+  final VoidCallback? onMenuPressed;
 
   const CustomTitleBar({
     super.key,
@@ -19,6 +20,7 @@ class CustomTitleBar extends StatefulWidget implements PreferredSizeWidget {
     this.actions,
     this.bottom,
     this.height = 50.0,
+    this.onMenuPressed,
   });
 
   @override
@@ -150,6 +152,24 @@ class _CustomTitleBarState extends State<CustomTitleBar> with WindowListener {
                   // Content of the title bar (will appear above the draggable area)
                   Row(
                     children: [
+                      // Hamburger menu button
+                      if (widget.onMenuPressed != null)
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: widget.onMenuPressed,
+                            child: SizedBox(
+                              width: 46,
+                              height: 46,
+                              child: Icon(
+                                Icons.menu,
+                                size: 20,
+                                color: foregroundColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      
                       // App icon/logo area (left side)
                       if (widget.leading != null) widget.leading!,
                       

@@ -29,7 +29,7 @@ void main() async {
   );
   
   // For non-web platforms like Windows, we'll handle persistence differently
-  // by signing out any persisted users at startup
+  // We won't try to use web-specific features like setPersistence
   if (!kIsWeb && Platform.isWindows) {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
