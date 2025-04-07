@@ -10,6 +10,9 @@ class TodoService extends ChangeNotifier {
   List<Todo> _cachedTodos = [];
   bool _isInitialized = false;
   
+  /// Whether the service is initialized
+  bool get isInitialized => _isInitialized;
+  
   /// Get all todos
   List<Todo> get todos => List.unmodifiable(_cachedTodos);
   
@@ -86,6 +89,7 @@ class TodoService extends ChangeNotifier {
   Future<void> refreshRepository() async {
     _repository = await _repositoryFactory.createTodoRepository();
     await _loadTodos();
+    _isInitialized = true;
   }
   
   /// Add a new todo

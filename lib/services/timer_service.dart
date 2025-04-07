@@ -10,6 +10,9 @@ class TimerService extends ChangeNotifier {
   List<TaskTimer> _cachedTimers = [];
   bool _isInitialized = false;
   
+  /// Whether the service is initialized
+  bool get isInitialized => _isInitialized;
+  
   /// Get all timers
   List<TaskTimer> get timers => List.unmodifiable(_cachedTimers);
   
@@ -42,6 +45,7 @@ class TimerService extends ChangeNotifier {
   Future<void> refreshRepository() async {
     _repository = await _repositoryFactory.createTimerRepository();
     await _loadTimers();
+    _isInitialized = true;
   }
   
   /// Add a new timer

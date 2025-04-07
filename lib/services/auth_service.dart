@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 
 /// Service that manages user authentication state
 class AuthService extends ChangeNotifier {
@@ -13,10 +14,24 @@ class AuthService extends ChangeNotifier {
   
   // Private constructor for singleton
   AuthService._internal() : _auth = FirebaseAuth.instance {
+    _initializeAuth();
     // Listen to auth state changes
     _auth.authStateChanges().listen((User? user) {
       notifyListeners();
     });
+  }
+  
+  // Initialize auth with platform-specific settings
+  Future<void> _initializeAuth() async {
+    // Set persistence to SESSION only on Windows to prevent auto-login
+    if (!kIsWeb && Platform.isWindows) {
+      try {
+        await _auth.setPersistence(Persistence.SESSION);
+        debugPrint('Firebase Auth persistence set to SESSION on Windows');
+      } catch (e) {
+        debugPrint('Error setting Firebase Auth persistence: $e');
+      }
+    }
   }
   
   // Private constructor for testing with dependency injection

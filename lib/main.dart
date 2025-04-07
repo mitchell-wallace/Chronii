@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'layouts/main_layout.dart';
 import 'screens/counter_screen.dart';
@@ -26,6 +27,21 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // For non-web platforms like Windows, we'll handle persistence differently
+  // by signing out any persisted users at startup
+  if (!kIsWeb && Platform.isWindows) {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && currentUser.isAnonymous) {
+        // Sign out any persisted anonymous user to prevent auto-login
+        await FirebaseAuth.instance.signOut();
+        debugPrint('Signed out persisted anonymous user on startup');
+      }
+    } catch (e) {
+      debugPrint('Error handling authentication state: $e');
+    }
+  }
   
   // Only initialize window_manager on desktop platforms
   if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
@@ -84,22 +100,42 @@ class _MyAppState extends State<MyApp> {
     
     // Disable automatic anonymous authentication on all platforms
     debugPrint('Automatic anonymous authentication is disabled');
-    // User will need to authenticate manually via the login screen
     
-    // Initialize data services (will be empty if not authenticated)
-    await _todoService.init();
-    await _timerService.init();
-    await _noteService.init();
+    // Check if there's a persisted anonymous user and clear it
+    final currentUser = _authService.currentUser;
+    if (currentUser != null && currentUser.isAnonymous) {
+      debugPrint('Found persisted anonymous user. Signing out to prevent automatic anonymous auth.');
+      await _authService.signOut();
+    }
+    
+    // Only initialize data services if the user manually authenticates later
+    // We'll delay initialization until authentication to prevent premature Firebase access
+    if (_authService.isFullyAuthenticated) {
+      // User is already fully authenticated (not anonymous)
+      await _todoService.init();
+      await _timerService.init();
+      await _noteService.init();
+    }
     
     // Listen for auth state changes to refresh repositories
     _authService.addListener(_handleAuthStateChanged);
   }
   
   void _handleAuthStateChanged() async {
-    // Refresh repositories when auth state changes
-    await _todoService.refreshRepository();
-    await _timerService.refreshRepository();
-    await _noteService.refreshRepository();
+    final isAuthenticated = _authService.isAuthenticated;
+    debugPrint('Auth state changed. User authenticated: $isAuthenticated');
+    
+    if (isAuthenticated) {
+      // Initialize services if they haven't been already
+      if (!_todoService.isInitialized) await _todoService.init();
+      if (!_timerService.isInitialized) await _timerService.init();
+      if (!_noteService.isInitialized) await _noteService.init();
+      
+      // Refresh repositories to ensure they match the current auth state
+      await _todoService.refreshRepository();
+      await _timerService.refreshRepository();
+      await _noteService.refreshRepository();
+    }
   }
   
   @override

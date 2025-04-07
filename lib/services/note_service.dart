@@ -19,6 +19,7 @@ class NoteService extends ChangeNotifier {
 
   // State
   List<Note> _notes = [];
+  bool _isInitialized = false;
   
   // Maintain a separate list of open note IDs in their display order
   // This ensures tab order remains stable during updates and syncing
@@ -27,6 +28,9 @@ class NoteService extends ChangeNotifier {
   // Debouncing timer for note updates
   Timer? _debounceTimer;
   static const _debounceDuration = Duration(seconds: 2); // 2-second debounce
+  
+  /// Whether the service is initialized
+  bool get isInitialized => _isInitialized;
 
   /// Get all notes (from cache)
   List<Note> get notes => _notes;
@@ -71,8 +75,14 @@ class NoteService extends ChangeNotifier {
   
   /// Initialize the service by getting the correct repository
   Future<void> init() async {
+    // Skip if already initialized
+    if (_isInitialized) return;
+    
     _repository = await _repositoryFactory.createNoteRepository();
     await _loadNotesFromRepo();
+    
+    // Mark as initialized
+    _isInitialized = true;
   }
   
   /// Loads notes from the repository into the cache
@@ -332,6 +342,9 @@ class NoteService extends ChangeNotifier {
     // Get potentially new repository based on auth state
     _repository = await _repositoryFactory.createNoteRepository(); 
     await _loadNotesFromRepo(); // Reload data into cache
+    
+    // Mark as initialized if not already
+    _isInitialized = true;
   }
   
   // Ensure the debounce timer is cancelled when the service is disposed
