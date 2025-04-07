@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart'; // For ScrollConfiguration
 import '../models/note_model.dart';
 import '../services/note_service.dart';
 import '../widgets/base/base_empty_state.dart';
@@ -21,6 +22,9 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   // Tab controller for switching between notes in edit view
   late TabController _tabController;
   
+  // Scroll controller for tab bar horizontal scrolling
+  late ScrollController _tabScrollController;
+  
   // Flag to track if tab controller is initialized
   bool _isTabControllerInitialized = false;
   
@@ -38,7 +42,31 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     // This will be updated after notes are loaded
     _tabController = TabController(length: 1, vsync: this);
     
+    // Initialize the scroll controller for horizontal scrolling
+    _tabScrollController = ScrollController();
+    
+    // Listen for tab changes to scroll tabs into view
+    _tabController.addListener(_handleTabChange);
+    
     _initNoteService();
+  }
+  
+  // Handle tab changes and ensure the selected tab is visible
+  void _handleTabChange() {
+    if (!_tabController.indexIsChanging) {
+      // When tab index changes, ensure the tab is visible by scrolling to it
+      _scrollToSelectedTab();
+    }
+  }
+  
+  // Scroll to make the selected tab visible
+  void _scrollToSelectedTab() {
+    // This method is simplified since we can't directly control TabBar's scrolling
+    // Instead, we rely on the TabBar's internal scrolling mechanism
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The TabBar will automatically scroll to the selected tab when it changes
+      // We can still perform additional actions if needed here in the future
+    });
   }
   
   // Initialize the note service
@@ -73,6 +101,8 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     
     // Dispose the old controller
     if (_isTabControllerInitialized) {
+      // Remove the listener before disposing
+      _tabController.removeListener(_handleTabChange);
       _tabController.dispose();
     }
     
@@ -88,11 +118,19 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
       );
     }
     
+    // Add the listener to the new controller
+    _tabController.addListener(_handleTabChange);
+    
     _isTabControllerInitialized = true;
     
     // Force a rebuild
     if (mounted) {
       setState(() {});
+      
+      // Ensure the selected tab is visible after rebuild
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToSelectedTab();
+      });
     }
   }
   
@@ -156,7 +194,9 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _noteService.removeListener(_updateTabController);
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _tabScrollController.dispose();
     super.dispose();
   }
 
@@ -286,6 +326,9 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     );
   }
   
+  // Global key for accessing the TabBar widget
+  final GlobalKey _tabBarKey = GlobalKey();
+  
   Widget _buildTabView(List<Note> notes, ThemeData theme) {
     // Handle empty list case
     if (notes.isEmpty) {
@@ -296,7 +339,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     
     return Column(
       children: [
-        // Thin tab bar for notes - using isScrollable for simple horizontal scrolling
+        // Simplified scrollable tab bar
         Container(
           height: 40,
           decoration: BoxDecoration(
@@ -308,20 +351,36 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          child: TabBar(
-            controller: _tabController,
-            isScrollable: true, // This enables horizontal scrolling with mouse wheel and drag
-            tabAlignment: TabAlignment.start,
-            dividerColor: Colors.transparent,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.7),
-            indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(
-                width: 2.0,
-                color: theme.colorScheme.primary,
+          // Use a simple ScrollConfiguration to enhance scroll behavior
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              physics: const BouncingScrollPhysics(),
+              dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              controller: _tabScrollController,
+              child: IntrinsicWidth(
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  dividerColor: Colors.transparent,
+                  labelColor: theme.colorScheme.primary,
+                  unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.7),
+                  // Extra padding for better touch targets
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  indicator: UnderlineTabIndicator(
+                    borderSide: BorderSide(
+                      width: 2.0,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  tabs: notes.map((note) => _buildNoteTab(note, theme)).toList(),
+                ),
               ),
             ),
-            tabs: notes.map((note) => _buildNoteTab(note, theme)).toList(),
           ),
         ),
         
@@ -359,20 +418,35 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
           onDelete: () => _deleteNote(note.id),
         );
       },
+      // Add tap handler for selecting tab - improves touch experience
+      onTap: () {
+        final index = _noteService.openNotes.indexOf(note);
+        if (index >= 0 && index != _tabController.index) {
+          _tabController.animateTo(index);
+        }
+      },
       child: Tab(
         height: 40,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              note.title.isEmpty ? 'Untitled Note' : 
-                (note.title.length > 20 ? '${note.title.substring(0, 20)}...' : note.title),
-              style: const TextStyle(fontSize: 13),
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.circle, size: 8, color: theme.colorScheme.primary.withOpacity(0.5)),
-          ],
+        child: Padding(
+          // Add padding inside the tab for better touch targets
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Constrain the text width for consistent tab sizes
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  note.title.isEmpty ? 'Untitled Note' : 
+                    (note.title.length > 20 ? '${note.title.substring(0, 20)}...' : note.title),
+                  style: const TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.circle, size: 8, color: theme.colorScheme.primary.withOpacity(0.5)),
+            ],
+          ),
         ),
       ),
     );
