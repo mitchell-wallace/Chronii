@@ -339,9 +339,10 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     
     return Column(
       children: [
-        // Simplified scrollable tab bar
+        // Full-width scrollable tab bar with left alignment
         Container(
           height: 40,
+          width: double.infinity, // Force full width container
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             border: Border(
@@ -351,36 +352,48 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          // Use a simple ScrollConfiguration to enhance scroll behavior
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(
-              physics: const BouncingScrollPhysics(),
-              dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _tabScrollController,
-              child: IntrinsicWidth(
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  labelColor: theme.colorScheme.primary,
-                  unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.7),
-                  // Extra padding for better touch targets
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  indicator: UnderlineTabIndicator(
-                    borderSide: BorderSide(
-                      width: 2.0,
-                      color: theme.colorScheme.primary,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // We'll measure the width of all tabs to determine if scrolling is needed
+              return NotificationListener<ScrollMetricsNotification>(
+                onNotification: (notification) {
+                  // Capture scroll notifications if needed in the future
+                  return false;
+                },
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    physics: const BouncingScrollPhysics(),
+                    dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    controller: _tabScrollController,
+                    child: ConstrainedBox(
+                      // This ensures the TabBar is at least as wide as the container
+                      // but can grow larger if needed (making it scrollable)
+                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                      child: TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        dividerColor: Colors.transparent,
+                        labelColor: theme.colorScheme.primary,
+                        unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.7),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        indicator: UnderlineTabIndicator(
+                          borderSide: BorderSide(
+                            width: 2.0,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        tabs: notes.map((note) => _buildNoteTab(note, theme)).toList(),
+                      ),
                     ),
                   ),
-                  tabs: notes.map((note) => _buildNoteTab(note, theme)).toList(),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
         
