@@ -20,6 +20,10 @@ class NoteService extends ChangeNotifier {
   // State
   List<Note> _notes = [];
   
+  // Maintain a separate list of open note IDs in their display order
+  // This ensures tab order remains stable during updates and syncing
+  List<String> _openNoteOrder = [];
+  
   // Debouncing timer for note updates
   Timer? _debounceTimer;
   static const _debounceDuration = Duration(seconds: 2); // 2-second debounce
@@ -27,8 +31,43 @@ class NoteService extends ChangeNotifier {
   /// Get all notes (from cache)
   List<Note> get notes => _notes;
   
-  /// Get only open notes (from cache)
-  List<Note> get openNotes => _notes.where((note) => note.isOpen).toList();
+  /// Get only open notes (from cache) in their stable display order
+  List<Note> get openNotes {
+    // If we have an established display order, use it
+    if (_openNoteOrder.isNotEmpty) {
+      // Create a map for faster lookup
+      final Map<String, Note> notesMap = {for (var note in _notes) note.id: note};
+      
+      // Get open notes in their display order, filtering out any IDs that no longer exist
+      // or are not open anymore
+      final orderedOpenNotes = _openNoteOrder
+          .where((id) => notesMap.containsKey(id) && notesMap[id]!.isOpen)
+          .map((id) => notesMap[id]!)
+          .toList();
+      
+      // If there are any newly opened notes not in our order list, add them at the end
+      final existingIds = orderedOpenNotes.map((note) => note.id).toSet();
+      final additionalOpenNotes = _notes
+          .where((note) => note.isOpen && !existingIds.contains(note.id))
+          .toList();
+      
+      // Combine both lists - the ordered ones first, then any new ones
+      final result = [...orderedOpenNotes, ...additionalOpenNotes];
+      
+      // Update our order list to match current state
+      _openNoteOrder = result.map((note) => note.id).toList();
+      
+      return result;
+    }
+    
+    // Fallback to simple filtering if we don't have an order yet
+    final openNotes = _notes.where((note) => note.isOpen).toList();
+    // Initialize the order list if it's empty
+    if (_openNoteOrder.isEmpty && openNotes.isNotEmpty) {
+      _openNoteOrder = openNotes.map((note) => note.id).toList();
+    }
+    return openNotes;
+  }
   
   /// Initialize the service by getting the correct repository
   Future<void> init() async {
@@ -50,8 +89,15 @@ class NoteService extends ChangeNotifier {
     }
     try {
       _notes = await _repository!.getAll();
-      // Sort notes by updated time (most recent first)
+      // Sort notes by updated time (most recent first) - for display in grid view
       _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      
+      // Initialize the open note order list based on currently open notes
+      // This preserves tab order during syncing and updates
+      _openNoteOrder = _notes
+          .where((note) => note.isOpen)
+          .map((note) => note.id)
+          .toList();
     } catch (e) {
       debugPrint('Error loading notes from repository: $e');
       _notes = [];
@@ -103,7 +149,24 @@ class NoteService extends ChangeNotifier {
       // Ensure updatedAt is current before potential save
       final noteToCache = updatedNote.copyWith(updatedAt: DateTime.now());
       _notes[index] = noteToCache;
-      _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt)); // Keep cache sorted
+      
+      // Sort the notes list for data management (but this doesn't affect tab order)
+      _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      
+      // If the note's open state has changed, update our order tracking
+      final wasOpen = noteToCache.id != updatedNote.id ? updatedNote.isOpen : _notes[index].isOpen;
+      final isNowOpen = noteToCache.isOpen;
+      
+      if (!wasOpen && isNowOpen) {
+        // Note was opened - add to beginning of order list if not already there
+        if (!_openNoteOrder.contains(noteToCache.id)) {
+          _openNoteOrder.insert(0, noteToCache.id);
+        }
+      } else if (wasOpen && !isNowOpen) {
+        // Note was closed - remove from order list
+        _openNoteOrder.remove(noteToCache.id);
+      }
+      
       notifyListeners(); // Update UI immediately
 
       // Debounce the repository update
@@ -127,7 +190,19 @@ class NoteService extends ChangeNotifier {
     
     // Get the note and toggle its state (this also updates 'updatedAt')
     final note = _notes[index];
+    final wasOpen = note.isOpen;
     note.toggleOpenState(); // Modifies the note object directly
+    
+    // Update our open note order tracking to maintain tab order
+    if (!wasOpen && note.isOpen) {
+      // Note was opened - add to beginning of order list if not already there
+      if (!_openNoteOrder.contains(note.id)) {
+        _openNoteOrder.insert(0, note.id);
+      }
+    } else if (wasOpen && !note.isOpen) {
+      // Note was closed - remove from display order
+      _openNoteOrder.remove(note.id);
+    }
     
     try {
       await _repository?.update(note); // Save the modified note
