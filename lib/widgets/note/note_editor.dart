@@ -147,56 +147,50 @@ class _NoteEditorState extends State<NoteEditor> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Title field with long-press to show actions
-          GestureDetector(
-            onLongPressStart: _showActionsMenu,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: TextField(
-                controller: _titleController,
-                style: theme.textTheme.titleLarge,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Untitled Note',
-                  contentPadding: EdgeInsets.zero,
-                ),
-                maxLines: 1,
-              ),
-            ),
-          ),
-          
-          // Display last edited time - more prominent now
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              'Last edited: ${_formatDate(widget.note.updatedAt)}',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.primary.withOpacity(0.8),
-              ),
-            ),
-          ),
-          
-          const Divider(),
-          
-          // Content field
+          // Combined scrollable area for both title and content
           Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.only(top: 8),
-              child: TextField(
-                controller: _contentController,
-                style: theme.textTheme.bodyLarge,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Write your note here...',
-                  contentPadding: EdgeInsets.zero,
-                ),
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title field with long-press to show actions and reduced padding
+                  GestureDetector(
+                    onLongPressStart: _showActionsMenu,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: TextField(
+                        controller: _titleController,
+                        style: theme.textTheme.titleLarge,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Untitled Note',
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                  
+                  // Divider between title and content
+                  const Divider(),
+                  
+                  // Content field
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.only(top: 4),
+                    child: TextField(
+                      controller: _contentController,
+                      style: theme.textTheme.bodyLarge,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Write your note here...',
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      maxLines: null,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

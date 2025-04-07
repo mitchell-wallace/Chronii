@@ -36,29 +36,13 @@ class TodoForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        BaseInputForm(
-          hintText: 'Add a new task',
-          buttonText: buttonText,
-          buttonIcon: buttonIcon,
-          autoFocus: autoFocus,
-          showBorder: showBorder,
-          onSubmit: onSubmit,
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Button to open detailed create dialog
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            icon: const Icon(Icons.more_horiz),
-            label: const Text('Add with more options'),
-            onPressed: () => _showCreateDialog(context),
-          ),
-        ),
-      ],
+    return BaseInputForm(
+      hintText: 'Add a new task',
+      buttonText: buttonText,
+      buttonIcon: buttonIcon,
+      autoFocus: autoFocus,
+      showBorder: showBorder,
+      onSubmit: onSubmit,
     );
   }
   
