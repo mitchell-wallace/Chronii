@@ -17,6 +17,9 @@ class Note {
   /// When the note was last updated
   DateTime updatedAt;
   
+  /// Whether the note is open for editing
+  bool isOpen;
+  
   /// Constructor for creating a new note
   Note({
     required this.title,
@@ -24,6 +27,7 @@ class Note {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? id,
+    this.isOpen = true,
   }) : 
     id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
     createdAt = createdAt ?? DateTime.now(),
@@ -42,11 +46,18 @@ class Note {
     updatedAt = DateTime.now();
   }
   
+  /// Toggles the open/closed state of the note
+  void toggleOpenState() {
+    isOpen = !isOpen;
+    updatedAt = DateTime.now();
+  }
+  
   /// Creates a copy of this note with optional new values
   Note copyWith({
     String? title,
     String? content,
     DateTime? updatedAt,
+    bool? isOpen,
   }) {
     return Note(
       id: id,
@@ -54,6 +65,7 @@ class Note {
       content: content ?? this.content,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      isOpen: isOpen ?? this.isOpen,
     );
   }
   
@@ -64,6 +76,7 @@ class Note {
     'content': content,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
+    'isOpen': isOpen,
   };
   
   /// Creates a note from JSON data
@@ -75,6 +88,7 @@ class Note {
         content: json['content'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         updatedAt: DateTime.parse(json['updatedAt'] as String),
+        isOpen: json['isOpen'] as bool? ?? true, // Default to true for backward compatibility
       );
     } catch (e) {
       debugPrint('Error parsing note from JSON: $e');

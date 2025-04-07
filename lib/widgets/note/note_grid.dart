@@ -69,37 +69,71 @@ class NoteGrid extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Note title
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      note.title.isEmpty ? 'Untitled Note' : note.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            GestureDetector(
+              onLongPressStart: (details) {
+                // Show menu at the long press position
+                NoteMenuUtil.showNoteMenuByLongPress(
+                  context: context,
+                  note: note,
+                  details: details,
+                  onToggleOpenState: () {
+                    // Tell parent to toggle the note's open state
+                    final updatedNote = note.copyWith(isOpen: !note.isOpen);
+                    onNoteUpdate(updatedNote);
+                  },
+                  onDelete: () => _confirmDeleteNote(context, note),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: note.isOpen 
+                    ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                    : theme.colorScheme.surfaceVariant.withOpacity(0.8),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                      width: 1,
                     ),
                   ),
-                  NoteMenuButton(
-                    note: note,
-                    onUpdate: (_) => onNoteSelected(note),
-                    onDelete: () => _confirmDeleteNote(context, note),
-                  ),
-                ],
+                ),
+                child: Row(
+                  children: [
+                    // Open/closed indicator
+                    Icon(
+                      note.isOpen ? Icons.visibility : Icons.visibility_off,
+                      size: 16,
+                      color: note.isOpen 
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        note.title.isEmpty ? 'Untitled Note' : note.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: note.isOpen
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    NoteMenuButton(
+                      note: note,
+                      onUpdate: (_) => onNoteSelected(note),
+                      onDelete: () => _confirmDeleteNote(context, note),
+                      onToggleOpenState: () {
+                        // Tell parent to toggle the note's open state
+                        final updatedNote = note.copyWith(isOpen: !note.isOpen);
+                        onNoteUpdate(updatedNote);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
             

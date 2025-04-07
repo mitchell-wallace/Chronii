@@ -18,6 +18,9 @@ class NoteService extends ChangeNotifier {
   /// Get all notes
   List<Note> get notes => _notes;
   
+  /// Get only open notes
+  List<Note> get openNotes => _notes.where((note) => note.isOpen).toList();
+  
   /// Initialize the service
   Future<void> init() async {
     if (_initialized) return;
@@ -67,6 +70,7 @@ class NoteService extends ChangeNotifier {
     final note = Note(
       title: title.isEmpty ? 'Untitled Note' : title,
       content: content,
+      isOpen: true,
     );
     
     _notes.insert(0, note);
@@ -92,6 +96,67 @@ class NoteService extends ChangeNotifier {
     if (index != -1) {
       _notes[index] = updatedNote;
       await _saveNotes();
+      notifyListeners();
+    }
+  }
+  
+  /// Toggle a note's open/closed state
+  Future<void> toggleNoteOpenState(String id) async {
+    final index = _notes.indexWhere((note) => note.id == id);
+    if (index == -1) return;
+    
+    // Get the note and toggle its state
+    final note = _notes[index];
+    note.toggleOpenState();
+    
+    // If we're closing the last open note, open another one
+    ensureOpenNote();
+    
+    notifyListeners();
+    await _saveNotes();
+  }
+  
+  /// Close all notes except one with the given ID
+  Future<void> closeAllNotesExcept(String id) async {
+    // Update all notes to be closed except the one with the given ID
+    for (int i = 0; i < _notes.length; i++) {
+      if (_notes[i].id != id && _notes[i].isOpen) {
+        _notes[i] = _notes[i].copyWith(isOpen: false);
+      } else if (_notes[i].id == id && !_notes[i].isOpen) {
+        // Make sure the excepted note is open
+        _notes[i] = _notes[i].copyWith(isOpen: true);
+      }
+    }
+    
+    notifyListeners();
+    await _saveNotes();
+  }
+  
+  /// Open all notes
+  Future<void> openAllNotes() async {
+    // Update all notes to be open
+    for (int i = 0; i < _notes.length; i++) {
+      if (!_notes[i].isOpen) {
+        _notes[i] = _notes[i].copyWith(isOpen: true);
+      }
+    }
+    
+    notifyListeners();
+    await _saveNotes();
+  }
+  
+  /// Ensure at least one note is open
+  Future<void> ensureOpenNote() async {
+    if (openNotes.isEmpty) {
+      // If we have notes but none are open, open the most recently updated one
+      if (_notes.isNotEmpty) {
+        _notes[0].isOpen = true;
+        await _saveNotes();
+      } else {
+        // If no notes at all, create a new one
+        await addNote('Untitled Note', '');
+      }
+      
       notifyListeners();
     }
   }

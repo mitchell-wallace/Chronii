@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/note_model.dart';
+import 'note_menu_actions.dart';
 
 /// Widget for editing a note
 class NoteEditor extends StatefulWidget {
@@ -11,12 +12,16 @@ class NoteEditor extends StatefulWidget {
   
   /// Callback for when note is deleted
   final Function(String) onNoteDelete;
+  
+  /// Callback for when the menu should be opened
+  final VoidCallback? onOpenMenu;
 
   const NoteEditor({
     super.key,
     required this.note,
     required this.onNoteUpdate,
     required this.onNoteDelete,
+    this.onOpenMenu,
   });
 
   @override
@@ -48,23 +53,31 @@ class _NoteEditorState extends State<NoteEditor> {
     super.didUpdateWidget(oldWidget);
     
     // Update controllers if the note changes
-    if (oldWidget.note.id != widget.note.id) {
+    if (oldWidget.note.id != widget.note.id ||
+        oldWidget.note.title != widget.note.title ||
+        oldWidget.note.content != widget.note.content) {
+      
       _titleController.text = widget.note.title;
       _contentController.text = widget.note.content;
+      
+      // Reset unsaved changes state
       _hasUnsavedChanges = false;
     }
   }
   
   void _handleTextChange() {
+    // Mark as having unsaved changes
     setState(() {
       _hasUnsavedChanges = true;
       _lastEditTime = DateTime.now();
     });
     
-    // Schedule a save after user stops typing for a moment
-    Future.delayed(const Duration(milliseconds: 1000), () {
+    // Save changes after a delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      // Only save if the last edit was at least 500ms ago
       final now = DateTime.now();
-      if (now.difference(_lastEditTime).inMilliseconds >= 1000 && _hasUnsavedChanges) {
+      final diff = now.difference(_lastEditTime);
+      if (diff.inMilliseconds >= 500 && _hasUnsavedChanges) {
         _saveChanges();
       }
     });
@@ -73,53 +86,40 @@ class _NoteEditorState extends State<NoteEditor> {
   void _saveChanges() {
     if (!_hasUnsavedChanges) return;
     
+    // Create updated note with the new title and content
     final updatedNote = widget.note.copyWith(
-      title: _titleController.text.trim().isEmpty ? 'Untitled Note' : _titleController.text,
+      title: _titleController.text,
       content: _contentController.text,
+      updatedAt: DateTime.now(),
     );
     
+    // Call the update callback
     widget.onNoteUpdate(updatedNote);
-    _hasUnsavedChanges = false;
+    
+    // Reset unsaved changes flag
+    setState(() {
+      _hasUnsavedChanges = false;
+    });
   }
   
   void _confirmDeleteNote() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Note'),
-        content: const Text('Are you sure you want to delete this note?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.onNoteDelete(widget.note.id);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  @override
-  void dispose() {
-    // Save any pending changes
+    // Save any pending changes first
     if (_hasUnsavedChanges) {
       _saveChanges();
     }
     
+    widget.onNoteDelete(widget.note.id);
+  }
+  
+  @override
+  void dispose() {
+    // Clean up controllers
     _titleController.dispose();
     _contentController.dispose();
+    
     super.dispose();
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -127,18 +127,24 @@ class _NoteEditorState extends State<NoteEditor> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title field
-          TextField(
-            controller: _titleController,
-            style: theme.textTheme.titleLarge,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Untitled Note',
-              contentPadding: EdgeInsets.symmetric(vertical: 8),
+          // Title field with long-press to show actions
+          GestureDetector(
+            onLongPressStart: _showActionsMenu,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TextField(
+                controller: _titleController,
+                style: theme.textTheme.titleLarge,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Untitled Note',
+                  contentPadding: EdgeInsets.zero,
+                ),
+                maxLines: 1,
+              ),
             ),
-            maxLines: 1,
           ),
           
           // Display last edited time - more prominent now
@@ -158,33 +164,37 @@ class _NoteEditorState extends State<NoteEditor> {
           
           // Content field
           Expanded(
-            child: TextField(
-              controller: _contentController,
-              style: theme.textTheme.bodyMedium,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Write your note here...',
-                contentPadding: EdgeInsets.zero,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(top: 8),
+              child: TextField(
+                controller: _contentController,
+                style: theme.textTheme.bodyLarge,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Write your note here...',
+                  contentPadding: EdgeInsets.zero,
+                ),
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
               ),
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              textAlignVertical: TextAlignVertical.top,
-              expands: true,
             ),
           ),
           
-          // Save indicator
+          // Status indicator for auto-save
           if (_hasUnsavedChanges)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+            Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(top: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      color: theme.colorScheme.primaryContainer.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -228,5 +238,22 @@ class _NoteEditorState extends State<NoteEditor> {
     } else {
       return 'Just now';
     }
+  }
+  
+  // Show actions menu on long press
+  void _showActionsMenu(LongPressStartDetails details) {
+    NoteMenuUtil.showNoteMenuByLongPress(
+      context: context,
+      note: widget.note,
+      details: details,
+      onToggleOpenState: _closeNote,
+      onDelete: _confirmDeleteNote,
+    );
+  }
+  
+  // Close the current note
+  void _closeNote() {
+    final updatedNote = widget.note.copyWith(isOpen: false);
+    widget.onNoteUpdate(updatedNote);
   }
 }

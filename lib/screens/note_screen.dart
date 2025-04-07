@@ -18,93 +18,131 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   // Note service
   final NoteService _noteService = NoteService();
   
-  // Tab controller for note tabs
+  // Tab controller for switching between notes in edit view
   late TabController _tabController;
+  
+  // Flag to track if tab controller is initialized
+  bool _isTabControllerInitialized = false;
   
   // Loading state
   bool _isLoading = true;
   
   // View mode (editor or grid)
   bool _isGridMode = false;
-  
+
   @override
   void initState() {
     super.initState();
     
-    // Initialize tab controller with empty tabs initially
-    _tabController = TabController(length: 0, vsync: this);
+    // Create an initial controller with zero length
+    // This will be updated after notes are loaded
+    _tabController = TabController(length: 1, vsync: this);
     
-    // Initialize note service
     _initNoteService();
   }
   
+  // Initialize the note service
   Future<void> _initNoteService() async {
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading = true;
     
+    // Init the service
     await _noteService.init();
     
-    // Initialize tab controller with actual number of notes
+    // Ensure at least one note is open
+    await _noteService.ensureOpenNote();
+    
+    // Listen for changes to the notes list
+    _noteService.addListener(_updateTabController);
+    
+    // Initialize the tab controller after notes are loaded
     _updateTabController();
     
     setState(() {
       _isLoading = false;
     });
-    
-    // Create a default note if no notes exist
-    if (_noteService.notes.isEmpty) {
-      await _createNewNote();
-    }
   }
   
+  // Update the tab controller when notes change
   void _updateTabController() {
-    final noteCount = _noteService.notes.length;
+    // Get the currently open notes
+    final openNotes = _noteService.openNotes;
+    final openNoteCount = openNotes.length;
     
-    if (noteCount == 0) {
-      // If no notes, create a controller with just 1 tab
+    // Store current tab index to restore it later if possible
+    final currentIndex = _isTabControllerInitialized ? _tabController.index : 0;
+    
+    // Dispose the old controller
+    if (_isTabControllerInitialized) {
+      _tabController.dispose();
+    }
+    
+    if (openNoteCount == 0) {
+      // If no open notes, create a controller with just 1 tab
       _tabController = TabController(length: 1, vsync: this);
     } else {
-      // Create controller with the right number of tabs
-      _tabController = TabController(length: noteCount, vsync: this);
+      // Create a controller with the correct number of tabs
+      _tabController = TabController(
+        length: openNoteCount,
+        vsync: this,
+        initialIndex: currentIndex < openNoteCount ? currentIndex : 0,
+      );
+    }
+    
+    _isTabControllerInitialized = true;
+    
+    // Force a rebuild
+    if (mounted) {
+      setState(() {});
     }
   }
   
-  Future<void> _createNewNote() async {
-    final newNote = await _noteService.addNote('Untitled Note', '');
+  // Create a new note
+  void _createNewNote() {
+    _noteService.addNote('', '');
     
-    // Update tab controller and select the new tab
-    _updateTabController();
-    _tabController.animateTo(0); // Newly added notes go to index 0
-    
-    setState(() {});
-  }
-  
-  Future<void> _updateNote(Note updatedNote) async {
-    await _noteService.updateNote(updatedNote);
-    setState(() {});
-  }
-  
-  Future<void> _deleteNote(String id) async {
-    final noteIndex = _noteService.notes.indexWhere((note) => note.id == id);
-    
-    await _noteService.deleteNote(id);
-    
-    // Update tab controller after deletion
-    _updateTabController();
-    
-    // If we deleted the last note or if the tab controller is now empty
-    if (_noteService.notes.isEmpty) {
-      await _createNewNote(); // Create a new default note
-    } else {
-      // Select an appropriate tab after deletion
-      final newIndex = noteIndex == 0 ? 0 : noteIndex - 1;
-      _tabController.animateTo(newIndex.clamp(0, _noteService.notes.length - 1));
+    // Switch to edit mode if in grid mode
+    if (_isGridMode) {
+      setState(() {
+        _isGridMode = false;
+      });
     }
     
-    setState(() {});
+    // Ensure the new note is shown in the editor
+    final openNotes = _noteService.openNotes;
+    if (openNotes.isNotEmpty) {
+      // Switch to the last tab (the new note)
+      _tabController.animateTo(openNotes.length - 1);
+    }
   }
   
+  // Update a note
+  void _updateNote(Note updatedNote) {
+    _noteService.updateNote(updatedNote);
+  }
+  
+  // Toggle a note's open state
+  void _toggleNoteOpenState(String id) {
+    _noteService.toggleNoteOpenState(id);
+  }
+  
+  // Delete a note
+  void _deleteNote(String id) {
+    _noteService.deleteNote(id);
+  }
+  
+  // Close all notes except the current one
+  void _closeAllNotesExceptCurrent() {
+    final currentIndex = _tabController.index;
+    final currentNote = _noteService.openNotes[currentIndex];
+    _noteService.closeAllNotesExcept(currentNote.id);
+  }
+  
+  // Open all notes
+  void _openAllNotes() {
+    _noteService.openAllNotes();
+  }
+  
+  // Toggle between grid and editor view
   void _toggleViewMode() {
     setState(() {
       _isGridMode = !_isGridMode;
@@ -113,6 +151,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   
   @override
   void dispose() {
+    _noteService.removeListener(_updateTabController);
     _tabController.dispose();
     super.dispose();
   }
@@ -121,6 +160,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notes = _noteService.notes;
+    final openNotes = _noteService.openNotes;
     
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -137,8 +177,8 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     return Column(
       children: [
         // Top action bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
             children: [
               // New note button
@@ -157,25 +197,55 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
                 onPressed: _toggleViewMode,
               ),
               
-              // Spacer to push actions to the right
               const Spacer(),
               
-              // Note menu button (only in editor mode and when there are notes)
-              if (!_isGridMode && _noteService.notes.isNotEmpty)
-                NoteMenuButton(
-                  note: _noteService.notes[_tabController.index],
-                  onUpdate: (_) {}, // No action needed as we're already in edit mode
-                  onDelete: () {
-                    if (_noteService.notes.isEmpty) return;
-                    
-                    final currentNoteIndex = _tabController.index;
-                    if (currentNoteIndex >= 0 && currentNoteIndex < _noteService.notes.length) {
-                      final currentNoteId = _noteService.notes[currentNoteIndex].id;
-                      _deleteNote(currentNoteId);
-                    }
-                  },
-                  includeDelete: true,
-                ),
+              // Add the note menu button on the right
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'Note options',
+                onSelected: (value) {
+                  // Handle selected menu item
+                  if (value == 'create') {
+                    _createNewNote();
+                  } else if (value == 'close_all') {
+                    _closeAllNotesExceptCurrent();
+                  } else if (value == 'open_all') {
+                    _openAllNotes();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem<String>(
+                    value: 'create',
+                    child: Row(
+                      children: [
+                        Icon(Icons.note_add),
+                        SizedBox(width: 8),
+                        Text('New Note'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'open_all',
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility),
+                        SizedBox(width: 8),
+                        Text('Open All Notes'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'close_all',
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility_off),
+                        SizedBox(width: 8),
+                        Text('Close Other Notes'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -187,8 +257,18 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
                 notes: notes,
                 onNoteSelected: (note) {
                   // When note is selected from grid, switch to editor view
-                  final index = notes.indexOf(note);
-                  _tabController.animateTo(index);
+                  // If note is closed, open it first
+                  if (!note.isOpen) {
+                    final updatedNote = note.copyWith(isOpen: true);
+                    _updateNote(updatedNote);
+                  }
+                  
+                  // Find index in openNotes
+                  final index = _noteService.openNotes.indexWhere((n) => n.id == note.id);
+                  if (index >= 0) {
+                    _tabController.animateTo(index);
+                  }
+                  
                   setState(() {
                     _isGridMode = false;
                   });
@@ -196,7 +276,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
                 onNoteUpdate: _updateNote,
                 onNoteDelete: _deleteNote,
               )
-            : _buildTabView(notes, theme),
+            : _buildTabView(openNotes, theme),
         ),
       ],
     );
@@ -206,7 +286,7 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
     // Handle empty list case
     if (notes.isEmpty) {
       return const Center(
-        child: Text('No notes available. Create a new note to get started.'),
+        child: Text('No open notes available. Create a new note to get started.'),
       );
     }
     
@@ -257,18 +337,37 @@ class _NoteScreenState extends State<NoteScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildNoteTab(Note note, ThemeData theme) {
-    return Tab(
-      height: 40,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            note.title.isEmpty ? 'Untitled Note' : note.title,
-            style: const TextStyle(fontSize: 13),
-          ),
-          const SizedBox(width: 4),
-          Icon(Icons.circle, size: 8, color: theme.colorScheme.primary.withOpacity(0.5)),
-        ],
+    return GestureDetector(
+      onLongPressStart: (details) {
+        // When long-pressing a tab, we want to handle it directly here
+        // First ensure the tab is selected
+        final index = _noteService.openNotes.indexOf(note);
+        if (index >= 0 && index != _tabController.index) {
+          _tabController.animateTo(index);
+        }
+        
+        // Show menu at the long press position
+        NoteMenuUtil.showNoteMenuByLongPress(
+          context: context,
+          note: note,
+          details: details,
+          onToggleOpenState: () => _toggleNoteOpenState(note.id),
+          onDelete: () => _deleteNote(note.id),
+        );
+      },
+      child: Tab(
+        height: 40,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              note.title.isEmpty ? 'Untitled Note' : note.title,
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.circle, size: 8, color: theme.colorScheme.primary.withOpacity(0.5)),
+          ],
+        ),
       ),
     );
   }
