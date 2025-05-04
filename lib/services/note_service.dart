@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/note_model.dart';
 import '../repositories/repository_factory.dart';

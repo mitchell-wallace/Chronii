@@ -90,7 +90,7 @@ class NoteGrid extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: note.isOpen 
                     ? theme.colorScheme.primaryContainer.withOpacity(0.5)
-                    : theme.colorScheme.surfaceVariant.withOpacity(0.8),
+                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
                   border: Border(
                     bottom: BorderSide(
                       color: theme.colorScheme.outlineVariant.withOpacity(0.3),

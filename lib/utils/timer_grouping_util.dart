@@ -115,10 +115,10 @@ class TimerGroupingUtil {
       return 'Yesterday';
     } else if (date.isAfter(today.subtract(const Duration(days: 7)))) {
       // Within the last week, show the day name
-      return _getDayName(date.weekday) + ', ' + _formatMonthDay(date);
+      return '${_getDayName(date.weekday)}, ${_formatMonthDay(date)}';
     } else {
       // More than a week ago, show the full date
-      return _getDayName(date.weekday) + ', ' + _formatMonthDay(date);
+      return '${_getDayName(date.weekday)}, ${_formatMonthDay(date)}';
     }
   }
   

@@ -73,7 +73,7 @@ class TodoCard extends StatelessWidget {
         ),
         backgroundColor: isOverdue 
             ? Colors.red.withOpacity(0.7)
-            : theme.colorScheme.surfaceVariant,
+            : theme.colorScheme.surfaceContainerHighest,
         visualDensity: VisualDensity.compact,
         padding: EdgeInsets.zero,
         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -92,7 +92,7 @@ class TodoCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          backgroundColor: theme.colorScheme.surfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
           labelPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -109,7 +109,7 @@ class TodoCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          backgroundColor: theme.colorScheme.surfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
           labelPadding: const EdgeInsets.symmetric(horizontal: 8),

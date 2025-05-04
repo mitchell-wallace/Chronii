@@ -357,7 +357,7 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
                                     setState(() {});
                                   },
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         ],
@@ -411,7 +411,7 @@ class _TodoScreenState extends State<TodoScreen> with SingleTickerProviderStateM
                                   setState(() {});
                                 },
                               );
-                            }).toList(),
+                            }),
                           ],
                         ),
                       ],

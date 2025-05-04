@@ -7,7 +7,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'layouts/main_layout.dart';
-import 'screens/counter_screen.dart';
 import 'screens/todo_screen.dart';
 import 'screens/timer_screen.dart';
 import 'screens/login_screen.dart';

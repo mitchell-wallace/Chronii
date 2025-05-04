@@ -74,7 +74,7 @@ class BaseItemCard extends StatelessWidget {
         (isSelected 
             ? theme.colorScheme.primaryContainer.withOpacity(0.3)
             : (isCompleted 
-                ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+                ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.5)
                 : theme.colorScheme.surface));
     
     // Determine the text color based on completion state

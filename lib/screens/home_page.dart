@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
 import '../widgets/counter_view.dart';
 import '../screens/todo_screen.dart';
 import '../widgets/custom_title_bar.dart';
 import 'timer_screen.dart';
 import '../services/timer_service.dart';
-import '../services/navigation_service.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});

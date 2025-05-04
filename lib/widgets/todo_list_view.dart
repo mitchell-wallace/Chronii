@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/todo_model.dart';
 import '../services/todo_service.dart';
 import '../widgets/base/base_empty_state.dart';
 import '../widgets/base/base_input_form.dart';

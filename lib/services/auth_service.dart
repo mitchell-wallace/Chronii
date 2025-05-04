@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
 
 /// Service that manages user authentication state
 class AuthService extends ChangeNotifier {
